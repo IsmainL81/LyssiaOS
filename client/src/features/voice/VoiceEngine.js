@@ -47,6 +47,37 @@ function cleanSpeechText(text = "") {
    DÉCOUPAGE DU TEXTE
    ===================================================== */
 
+/* =====================================================
+   PROSODIE PAR MORCEAU
+   =====================================================
+   Variation légère de rate/pitch selon la ponctuation de
+   fin de morceau, pour éviter une intonation identique et
+   plate sur chaque phrase. Les valeurs restent proches de
+   1 -- l'objectif est une nuance perceptible, pas un effet
+   robotique inverse.
+   ===================================================== */
+
+function getChunkProsody(chunk) {
+  const trimmed = String(chunk).trim();
+  const lastChar = trimmed.slice(-1);
+
+  // Légère variation aléatoire pour éviter un débit
+  // parfaitement identique morceau après morceau.
+  const microVariation = () =>
+    1 + (Math.random() * 0.04 - 0.02);
+
+  if (lastChar === "?") {
+    return { rate: 1.0 * microVariation(), pitch: 1.08 };
+  }
+
+  if (lastChar === "!") {
+    return { rate: 1.08 * microVariation(), pitch: 1.06 };
+  }
+
+  return { rate: 1.0 * microVariation(), pitch: 1.0 };
+}
+
+
 function splitSpeechText(text = "") {
   const cleanText = String(text)
     .replace(/\s+/g, " ")
@@ -182,8 +213,8 @@ export function speak(text, options = {}) {
 
     const {
       language = "fr-FR",
-      rate = 1,
-      pitch = 1,
+      rate: explicitRate,
+      pitch: explicitPitch,
       volume = 1,
     } = options;
 
@@ -312,6 +343,9 @@ export function speak(text, options = {}) {
       const chunk =
         chunks[chunkIndex];
 
+      const autoProsody =
+        getChunkProsody(chunk);
+
       const utterance =
         new SpeechSynthesisUtterance(
           chunk
@@ -324,10 +358,12 @@ export function speak(text, options = {}) {
         language;
 
       utterance.rate =
-        rate;
+        explicitRate ??
+        autoProsody.rate;
 
       utterance.pitch =
-        pitch;
+        explicitPitch ??
+        autoProsody.pitch;
 
       utterance.volume =
         volume;
