@@ -1,60 +1,69 @@
-import Navbar from "./components/Navbar";
-import Avatar3D from "./components/Avatar3D";
+import {
+  useEffect,
+  useState,
+} from "react";
 
-function App() {
+import MainLayout from "./components/Layout/MainLayout";
 
-  return (
+import Dashboard from "./pages/Dashboard";
+import Vision from "./pages/Vision";
+import Memory from "./pages/Memory";
 
-    <>
+import {
+  VisionProvider,
+} from "./features/vision/VisionContext";
 
-      <Navbar/>
-
-      <div
-      style={{
-        display:"grid",
-        gridTemplateColumns:"60% 40%",
-        height:"calc(100vh - 70px)",
-        background:"#090d18"
-      }}
-      >
-
-        <div>
-
-            <Avatar3D/>
-
-        </div>
-
-        <div
-        style={{
-            color:"white",
-            padding:"40px"
-        }}
-        >
-
-            <h1>Tableau de bord Lyssia</h1>
-
-            <hr/>
-
-            <h3>IA</h3>
-
-            <p>🟢 Connectée</p>
-
-            <h3>Vision</h3>
-
-            <p>🟡 En attente</p>
-
-            <h3>Robot</h3>
-
-            <p>🔴 Déconnecté</p>
-
-        </div>
-
-      </div>
-
-    </>
-
-  );
-
+function getCurrentPath() {
+  return window.location.pathname;
 }
 
-export default App;
+export default function App() {
+  const [path, setPath] =
+    useState(getCurrentPath);
+
+  useEffect(() => {
+    function handleNavigation() {
+      setPath(
+        getCurrentPath()
+      );
+    }
+
+    window.addEventListener(
+      "popstate",
+      handleNavigation
+    );
+
+    return () => {
+      window.removeEventListener(
+        "popstate",
+        handleNavigation
+      );
+    };
+  }, []);
+
+  let page;
+
+  switch (path) {
+    case "/vision":
+      page = <Vision />;
+      break;
+
+    case "/memory":
+      page = <Memory />;
+      break;
+
+    case "/":
+    case "/dashboard":
+    default:
+      page = <Dashboard />;
+      break;
+  }
+
+  return (
+    <VisionProvider>
+      <MainLayout>
+        {page}
+      </MainLayout>
+    </VisionProvider>
+  );
+}
