@@ -765,6 +765,31 @@ RÈGLES DE RÉPONSE :
 
     /*
      * -----------------------------------------------------
+     * STOP
+     * -----------------------------------------------------
+     * Detection normalisee (accents, limites de mot) via
+     * CognitiveEngine V2 - couvre "arrete", "stop", "coupe",
+     * "desactive", etc. Aucun mecanisme equivalent n'existait
+     * pour le texte tape avant cet ajout (seul le bouton Stop
+     * de l'interface declenchait cet arret).
+     */
+
+    if (cognitivePlan.action === "stop") {
+      await executeCognitivePlan(
+        cognitivePlan,
+        {
+          onStop: () => {
+            stopSpeaking();
+            setSpeaking(false);
+          },
+        }
+      );
+
+      return;
+    }
+
+    /*
+     * -----------------------------------------------------
      * VISION
      * -----------------------------------------------------
      */
