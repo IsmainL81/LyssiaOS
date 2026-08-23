@@ -79,6 +79,16 @@ export default function ChatPanel() {
    */
   useEffect(() => {
     startVoiceListening();
+
+    /*
+     * Nettoyage requis pour StrictMode (qui monte,
+     * demonte, puis remonte les effets en dev) et pour
+     * un vrai demontage du composant -- sans ca, deux
+     * sessions d'ecoute pourraient tourner en parallele.
+     */
+    return () => {
+      stopVoiceListening();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
