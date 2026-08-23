@@ -1,4 +1,5 @@
 ﻿import {
+  useEffect,
   useRef,
   useState,
 } from "react";
@@ -66,6 +67,20 @@ export default function ChatPanel() {
   const {
     visionController,
   } = useVision();
+
+  /*
+   * =====================================================
+   * ECOUTE CONTINUE - DEMARRAGE AUTOMATIQUE
+   * =====================================================
+   * Lance l'ecoute au montage plutot que d'attendre un
+   * clic sur le micro. startVoiceListening() se relance
+   * ensuite lui-meme (voir onEnd/onError de la session)
+   * pour maintenir le micro actif en continu.
+   */
+  useEffect(() => {
+    startVoiceListening();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [
     messages,
@@ -356,8 +371,6 @@ Si un souvenir concerne une perception visuelle passée, indique clairement qu'i
         text,
         {
           language: "fr-FR",
-          rate: 1,
-          pitch: 1,
           volume: 1,
 
           onStart: () => {
@@ -1110,6 +1123,38 @@ RÈGLES DE RÉPONSE :
                 );
               },
 
+            /*
+             * Signal d'activité brut (interim + final).
+             * Sert uniquement a l'interruption : si Lyssia
+             * parle et qu'une activite vocale reelle est
+             * captee, on la coupe immediatement, sans
+             * attendre la fin de l'enonce ni un clic.
+             */
+            onSpeechActivity:
+              (
+                text
+              ) => {
+                if (
+                  speaking &&
+                  text?.trim().length > 1
+                ) {
+                  interruptingRef.current =
+                    true;
+
+                  stopSpeaking();
+
+                  setSpeaking(false);
+
+                  setSystemState(
+                    (previous) => ({
+                      ...previous,
+                      ai: "listening",
+                      voice: "listening",
+                    })
+                  );
+                }
+              },
+
             onEnd:
   async ({
     text,
@@ -1145,6 +1190,17 @@ RÈGLES DE RÉPONSE :
                     })
                   );
 
+                  /*
+                   * Ecoute continue : on relance meme
+                   * si aucun texte n'a ete capte.
+                   */
+                  setTimeout(
+                    () => {
+                      startVoiceListening();
+                    },
+                    300
+                  );
+
                   return;
                 }
 
@@ -1159,6 +1215,18 @@ RÈGLES DE RÉPONSE :
                 await processMessage(
                   text
                 );
+
+                /*
+                 * Ecoute continue : on relance apres
+                 * traitement, une fois la reponse geree
+                 * (parlee ou non) par processMessage.
+                 */
+                setTimeout(
+                  () => {
+                    startVoiceListening();
+                  },
+                  300
+                );
               },
 
             onError:
@@ -1168,6 +1236,19 @@ RÈGLES DE RÉPONSE :
                 console.warn(
                   "Erreur reconnaissance vocale :",
                   error
+                );
+
+                /*
+                 * Ecoute continue : on relance aussi
+                 * apres une erreur, avec un delai un peu
+                 * plus long pour eviter une boucle serree
+                 * si le probleme persiste.
+                 */
+                setTimeout(
+                  () => {
+                    startVoiceListening();
+                  },
+                  1000
                 );
 
                 listeningSessionRef.current =
