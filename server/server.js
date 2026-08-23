@@ -164,8 +164,16 @@ const stream = await openai.responses.create({
     res.flushHeaders?.();
 
     let fullText = "";
+    let eventCount = 0;
 
     for await (const event of stream) {
+      eventCount += 1;
+
+      console.log(
+        `🔍 [${eventCount}] event.type =`,
+        event.type
+      );
+
       if (
         event.type ===
         "response.output_text.delta"
@@ -181,11 +189,30 @@ const stream = await openai.responses.create({
         event.type ===
         "response.completed"
       ) {
+        console.log(
+          "🔍 response.completed - status:",
+          event.response?.status,
+          "- output_text:",
+          event.response?.output_text?.slice(0, 200)
+        );
+
         res.write(
           `data: ${JSON.stringify({ done: true, fullText })}\n\n`
         );
       }
+
+      if (event.type === "error") {
+        console.log(
+          "🔍 error event complet :",
+          JSON.stringify(event)
+        );
+      }
     }
+
+    console.log(
+      `🔍 Fin de boucle. ${eventCount} evenement(s) au total. fullText.length =`,
+      fullText.length
+    );
 
     res.end();
   } catch (error) {
