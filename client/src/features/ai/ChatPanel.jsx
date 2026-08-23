@@ -101,8 +101,11 @@ export default function ChatPanel() {
   const listeningSessionRef =
     useRef(null);
 
+  const speechPauseTimerRef =
+    useRef(null);
+
   const interruptingRef =
-    useRef(false);
+  useRef(false);
 
   function updateConversationState(state) {
   setConversationState(state);
@@ -930,9 +933,18 @@ RÈGLES DE RÉPONSE :
    */
 
   function stopVoiceListening() {
-    if (
-      listeningSessionRef.current
-    ) {
+  if (speechPauseTimerRef.current) {
+    clearTimeout(
+      speechPauseTimerRef.current
+    );
+
+    speechPauseTimerRef.current =
+      null;
+  }
+
+  if (
+    listeningSessionRef.current
+  ) {
       try {
         listeningSessionRef.current.stop();
       } catch (error) {
@@ -1074,11 +1086,20 @@ RÈGLES DE RÉPONSE :
               },
 
             onEnd:
-              async ({
-                text,
-              }) => {
-                listeningSessionRef.current =
-                  null;
+  async ({
+    text,
+  }) => {
+    if (speechPauseTimerRef.current) {
+      clearTimeout(
+        speechPauseTimerRef.current
+      );
+
+      speechPauseTimerRef.current =
+        null;
+    }
+
+    listeningSessionRef.current =
+      null;
 
                 setListening(
                   false

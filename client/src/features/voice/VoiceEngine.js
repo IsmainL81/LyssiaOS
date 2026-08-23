@@ -1,4 +1,4 @@
-﻿/**
+/**
  * =====================================================
  * LYSSIA OS
  * Module : Voice Engine
@@ -6,10 +6,10 @@
  * =====================================================
  *
  * Gestion :
- *  - synthèse vocale
- *  - interruption de la synthèse
+ *  - synthÃ¨se vocale
+ *  - interruption de la synthÃ¨se
  *  - reconnaissance vocale
- *  - sessions d'écoute
+ *  - sessions d'Ã©coute
  * =====================================================
  */
 
@@ -19,7 +19,7 @@ let activeSpeechResolve = null;
 
 
 /* =====================================================
-   SYNTHÈSE VOCALE
+   SYNTHÃˆSE VOCALE
    ===================================================== */
 
 export function isVoiceSupported() {
@@ -32,7 +32,7 @@ export function isVoiceSupported() {
 
 
 /* =====================================================
-   DÉCOUPAGE DU TEXTE
+   DÃ‰COUPAGE DU TEXTE
    ===================================================== */
 
 function splitSpeechText(text = "") {
@@ -46,7 +46,7 @@ function splitSpeechText(text = "") {
 
   const sentences =
     cleanText.match(
-      /[^.!?…]+(?:[.!?…]+|$)/g
+      /[^.!?â€¦]+(?:[.!?â€¦]+|$)/g
     ) || [cleanText];
 
   const chunks = [];
@@ -100,24 +100,24 @@ function splitSpeechText(text = "") {
   return chunks;
 }
 /* =====================================================
-   ARRÊT DE LA PAROLE
+   ARRÃŠT DE LA PAROLE
    ===================================================== */
 
 export function stopSpeaking() {
   console.trace(
-  "🛑 Lyssia — stopSpeaking() appelé"
+  "ðŸ›‘ Lyssia â€” stopSpeaking() appelÃ©"
 );
   if (!isVoiceSupported()) {
     return;
   }
 
   /*
-   * Invalide immédiatement la session active.
+   * Invalide immÃ©diatement la session active.
    */
   activeSpeechToken += 1;
 
   /*
-   * Libère la Promise en attente.
+   * LibÃ¨re la Promise en attente.
    */
   if (activeSpeechResolve) {
     const resolve =
@@ -131,7 +131,7 @@ export function stopSpeaking() {
   activeUtterance = null;
 
   /*
-   * Arrêt physique du moteur vocal.
+   * ArrÃªt physique du moteur vocal.
    */
   window.speechSynthesis.cancel();
 }
@@ -143,7 +143,7 @@ export function stopSpeaking() {
 
 export function speak(text, options = {}) {
   console.trace(
-    "🎙️ Lyssia — speak() appelé",
+    "ðŸŽ™ï¸ Lyssia â€” speak() appelÃ©",
     text?.slice(0, 120)
   );
 
@@ -151,7 +151,7 @@ export function speak(text, options = {}) {
     if (!isVoiceSupported()) {
       reject(
         new Error(
-          "La synthèse vocale n'est pas disponible dans ce navigateur."
+          "La synthÃ¨se vocale n'est pas disponible dans ce navigateur."
         )
       );
       return;
@@ -164,11 +164,11 @@ export function speak(text, options = {}) {
 
     /*
      * Une nouvelle demande invalide simplement
-     * la précédente.
+     * la prÃ©cÃ©dente.
      *
      * IMPORTANT :
      * aucun cancel() ici.
-     * L'arrêt physique est réservé à stopSpeaking().
+     * L'arrÃªt physique est rÃ©servÃ© Ã  stopSpeaking().
      */
     activeSpeechToken += 1;
 
@@ -208,7 +208,7 @@ export function speak(text, options = {}) {
         voices.find(
           (voice) =>
             voice.name ===
-            "Google français"
+            "Google franÃ§ais"
         ) ||
         voices.find(
           (voice) =>
@@ -245,7 +245,7 @@ export function speak(text, options = {}) {
       activeSpeechResolve = null;
 
       console.log(
-        "🏁 Lyssia — voix terminée"
+        "ðŸ Lyssia â€” voix terminÃ©e"
       );
 
       if (options.onEnd) {
@@ -305,7 +305,7 @@ export function speak(text, options = {}) {
       }
 
       /*
-       * Tous les morceaux sont terminés.
+       * Tous les morceaux sont terminÃ©s.
        */
       if (
         chunkIndex >=
@@ -354,7 +354,7 @@ export function speak(text, options = {}) {
 
       utterance.onstart = () => {
         console.log(
-          "🎙️ [NATIVE] Lyssia onstart",
+          "ðŸŽ™ï¸ [NATIVE] Lyssia onstart",
           {
             chunkIndex,
             totalChunks:
@@ -394,7 +394,7 @@ export function speak(text, options = {}) {
 
       utterance.onend = () => {
         console.log(
-          "🏁 [NATIVE] Lyssia onend",
+          "ðŸ [NATIVE] Lyssia onend",
           {
             chunkIndex,
             totalChunks:
@@ -426,7 +426,7 @@ export function speak(text, options = {}) {
          * Aucun cancel() ici.
          *
          * On laisse SpeechSynthesis
-         * enchaîner naturellement.
+         * enchaÃ®ner naturellement.
          */
         speakNext();
       };
@@ -441,7 +441,7 @@ export function speak(text, options = {}) {
         event
       ) => {
         console.error(
-          "❌ [NATIVE] Lyssia onerror",
+          "âŒ [NATIVE] Lyssia onerror",
           {
             error:
               event?.error,
@@ -468,8 +468,8 @@ export function speak(text, options = {}) {
 
         /*
          * Une interruption volontaire
-         * provoquée par stopSpeaking()
-         * ne doit pas être traitée comme
+         * provoquÃ©e par stopSpeaking()
+         * ne doit pas Ãªtre traitÃ©e comme
          * une erreur applicative.
          */
         if (
@@ -530,7 +530,7 @@ export function isListeningSupported() {
 
 
 /* =====================================================
-   SESSION D'ÉCOUTE
+   SESSION D'Ã‰COUTE
    ===================================================== */
 
 export function createListeningSession(
@@ -553,6 +553,7 @@ export function createListeningSession(
     onStart,
     onInterimResult,
     onFinalResult,
+    onSpeechActivity,
     onEnd,
     onError,
   } = options;
@@ -590,6 +591,15 @@ export function createListeningSession(
       const transcript =
         result[0]?.transcript || "";
 
+      if (
+        transcript.trim() &&
+        onSpeechActivity
+      ) {
+        onSpeechActivity(
+          transcript.trim()
+        );
+      }
+
       if (result.isFinal) {
         finalText += `${transcript} `;
       } else {
@@ -619,15 +629,6 @@ export function createListeningSession(
   recognition.onerror = (event) => {
     if (onError) {
       onError(event);
-    }
-  };
-
-  recognition.onend = () => {
-    if (onEnd) {
-      onEnd({
-        text: finalText.trim(),
-        stopped,
-      });
     }
   };
 
@@ -667,7 +668,7 @@ export function createListeningSession(
       recognition.stop();
     } catch (error) {
       console.warn(
-        "Impossible d'arrêter la reconnaissance vocale :",
+        "Impossible d'arrÃªter la reconnaissance vocale :",
         error
       );
     }
@@ -770,7 +771,7 @@ export function startListening(
 
 
 /* =====================================================
-   ARRÊT D'UNE SESSION D'ÉCOUTE
+   ARRÃŠT D'UNE SESSION D'Ã‰COUTE
    ===================================================== */
 
 export function stopListening(session) {
