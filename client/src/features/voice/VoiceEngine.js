@@ -492,6 +492,34 @@ export function speak(text, options = {}) {
    RECONNAISSANCE VOCALE
    ===================================================== */
 
+/*
+ * Correction de noms propres mal reconnus. "Lyssia" est un
+ * nom invente, absent du modele de langage du reconnaisseur
+ * (base sur des mots courants), qui le remplace par le nom
+ * courant le plus proche phonetiquement -- observe : "Alicia".
+ * SpeechGrammarList (biais de vocabulaire cote navigateur) est
+ * officiellement deprecie et sans effet reel, donc la correction
+ * se fait ici, en aval, sur le texte transcrit.
+ */
+const NAME_CORRECTIONS = [
+  { pattern: /\balicia\b/gi, replacement: "Lyssia" },
+  { pattern: /\balyssia\b/gi, replacement: "Lyssia" },
+  { pattern: /\balyssa\b/gi, replacement: "Lyssia" },
+];
+
+function correctKnownMishearings(text = "") {
+  let corrected = String(text);
+
+  for (const { pattern, replacement } of NAME_CORRECTIONS) {
+    corrected = corrected.replace(
+      pattern,
+      replacement
+    );
+  }
+
+  return corrected;
+}
+
 function getSpeechRecognitionConstructor() {
   if (typeof window === "undefined") {
     return null;
@@ -571,7 +599,9 @@ export function createListeningSession(
         event.results[index];
 
       const transcript =
-        result[0]?.transcript || "";
+        correctKnownMishearings(
+          result[0]?.transcript || ""
+        );
 
       if (
         transcript.trim() &&
