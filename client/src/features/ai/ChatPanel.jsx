@@ -1,5 +1,4 @@
 ﻿import {
-  useEffect,
   useRef,
   useState,
 } from "react";
@@ -69,30 +68,6 @@ export default function ChatPanel({
   const {
     visionController,
   } = useVision();
-
-  /*
-   * =====================================================
-   * ECOUTE CONTINUE - DEMARRAGE AUTOMATIQUE
-   * =====================================================
-   * Lance l'ecoute au montage plutot que d'attendre un
-   * clic sur le micro. startVoiceListening() se relance
-   * ensuite lui-meme (voir onEnd/onError de la session)
-   * pour maintenir le micro actif en continu.
-   */
-  useEffect(() => {
-    startVoiceListening();
-
-    /*
-     * Nettoyage requis pour StrictMode (qui monte,
-     * demonte, puis remonte les effets en dev) et pour
-     * un vrai demontage du composant -- sans ca, deux
-     * sessions d'ecoute pourraient tourner en parallele.
-     */
-    return () => {
-      stopVoiceListening();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const [
     messages,
@@ -1202,17 +1177,6 @@ RÈGLES DE RÉPONSE :
                     })
                   );
 
-                  /*
-                   * Ecoute continue : on relance meme
-                   * si aucun texte n'a ete capte.
-                   */
-                  setTimeout(
-                    () => {
-                      startVoiceListening();
-                    },
-                    300
-                  );
-
                   return;
                 }
 
@@ -1227,18 +1191,6 @@ RÈGLES DE RÉPONSE :
                 await processMessage(
                   text
                 );
-
-                /*
-                 * Ecoute continue : on relance apres
-                 * traitement, une fois la reponse geree
-                 * (parlee ou non) par processMessage.
-                 */
-                setTimeout(
-                  () => {
-                    startVoiceListening();
-                  },
-                  300
-                );
               },
 
             onError:
@@ -1248,19 +1200,6 @@ RÈGLES DE RÉPONSE :
                 console.warn(
                   "Erreur reconnaissance vocale :",
                   error
-                );
-
-                /*
-                 * Ecoute continue : on relance aussi
-                 * apres une erreur, avec un delai un peu
-                 * plus long pour eviter une boucle serree
-                 * si le probleme persiste.
-                 */
-                setTimeout(
-                  () => {
-                    startVoiceListening();
-                  },
-                  1000
                 );
 
                 listeningSessionRef.current =
