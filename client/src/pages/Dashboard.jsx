@@ -563,14 +563,24 @@ const latestMemory =
           right: 18,
           bottom: 18,
 
-          height: 300,
+          height:
+            viewMode === "presence"
+              ? 96
+              : 300,
 
           zIndex: 20,
 
           minHeight: 0,
+
+          transition:
+            "height 0.25s ease",
         }}
         >
-          <ChatPanel />
+          <ChatPanel
+            compact={
+              viewMode === "presence"
+            }
+          />
         </Box>
       </Box>
 

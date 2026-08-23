@@ -53,7 +53,9 @@ import {
   setConversationState,
 } from "../../core/ConversationState";
 
-export default function ChatPanel() {
+export default function ChatPanel({
+  compact = false,
+}) {
   const {
   setSystemState,
   conversationState,
@@ -1335,8 +1337,11 @@ RÈGLES DE RÉPONSE :
       }}
     >
       {/* =================================================
-          TITRE
+          TITRE + MESSAGES (masques en mode compact)
          ================================================= */}
+
+      {!compact && (
+      <>
 
       <Typography
         variant="h6"
@@ -1467,6 +1472,9 @@ RÈGLES DE RÉPONSE :
             </Typography>
           )}
       </Box>
+
+      </>
+      )}
 
       {/* =================================================
           SAISIE
