@@ -1,4 +1,4 @@
-/**
+﻿/**
  * =====================================================
  * LYSSIA OS
  * Module : Voice Engine
@@ -630,6 +630,23 @@ export function createListeningSession(
       });
     }
   };
+
+  recognition.onend = () => {
+  console.log(
+  "[VOICE DEBUG] recognition.onend",
+  "stopped =",
+  stopped,
+  "text =",
+  JSON.stringify(finalText.trim())
+);
+
+  if (onEnd) {
+    onEnd({
+      text: finalText.trim(),
+      stopped,
+    });
+  }
+};
 
   function start() {
     stopped = false;

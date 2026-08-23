@@ -1,4 +1,4 @@
-import {
+﻿import {
   useRef,
   useState,
 } from "react";
@@ -1035,7 +1035,7 @@ RÈGLES DE RÉPONSE :
               "fr-FR",
 
             continuous:
-              false,
+              true,
 
             interimResults:
               true,

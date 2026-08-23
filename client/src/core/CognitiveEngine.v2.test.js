@@ -10,6 +10,13 @@ const tests = [
   "Arrête la vision",
   "Arrête la caméra",
   "Lance la vision",
+
+
+  "Tu peux me dire ce que tu vois ici ?",
+  "Qu'est-ce que tu penses de ce que je viens de te montrer ?",
+  "Est-ce que ça te rappelle quelque chose ?",
+  "Tu te rappelles ce qu'on avait décidé hier ?",
+  "Regarde cette image et dis-moi si tu reconnais quelque chose.",
 ];
 
 for (const message of tests) {
