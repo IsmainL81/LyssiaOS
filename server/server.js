@@ -124,7 +124,7 @@ ${JSON.stringify(
 )}
 `;
 
-const stream = await openai.responses.create({
+const response = await openai.responses.create({
   model: "gpt-5-mini",
 
   instructions:
@@ -133,100 +133,16 @@ const stream = await openai.responses.create({
   input: message,
 
   max_output_tokens: 400,
-
-  /*
-   * reasoning.effort retire temporairement pour isoler
-   * la cause du blocage silencieux -- c'etait le seul
-   * parametre ajoute sans avoir pu etre teste en reel.
-   */
-
-  stream: true,
 });
 
-    res.setHeader(
-      "Content-Type",
-      "text/event-stream"
-    );
-    res.setHeader(
-      "Cache-Control",
-      "no-cache"
-    );
-    res.setHeader(
-      "Connection",
-      "keep-alive"
-    );
-    res.flushHeaders?.();
-
-    let fullText = "";
-    let eventCount = 0;
-
-    for await (const event of stream) {
-      eventCount += 1;
-
-      console.log(
-        `🔍 [${eventCount}] event.type =`,
-        event.type
-      );
-
-      if (
-        event.type ===
-        "response.output_text.delta"
-      ) {
-        fullText += event.delta;
-
-        res.write(
-          `data: ${JSON.stringify({ delta: event.delta })}\n\n`
-        );
-      }
-
-      if (
-        event.type ===
-        "response.completed"
-      ) {
-        console.log(
-          "🔍 response.completed - status:",
-          event.response?.status,
-          "- output_text:",
-          event.response?.output_text?.slice(0, 200)
-        );
-
-        res.write(
-          `data: ${JSON.stringify({ done: true, fullText })}\n\n`
-        );
-      }
-
-      if (event.type === "error") {
-        console.log(
-          "🔍 error event complet :",
-          JSON.stringify(event)
-        );
-      }
-    }
-
-    console.log(
-      `🔍 Fin de boucle. ${eventCount} evenement(s) au total. fullText.length =`,
-      fullText.length
-    );
-
-    res.end();
+    res.json({
+      reply: response.output_text,
+    });
   } catch (error) {
     console.error(
       "Erreur OpenAI Chat :",
       error
     );
-
-    if (res.headersSent) {
-      /*
-       * Le streaming a deja commence : on ne peut plus
-       * envoyer un statut HTTP classique. On signale
-       * l'erreur dans le flux SSE lui-meme.
-       */
-      res.write(
-        `data: ${JSON.stringify({ error: "Erreur pendant la generation de la reponse." })}\n\n`
-      );
-      res.end();
-      return;
-    }
 
     res.status(500).json({
       error:
