@@ -124,7 +124,7 @@ ${JSON.stringify(
 )}
 `;
 
-const response = await openai.responses.create({
+const stream = await openai.responses.create({
   model: "gpt-5-mini",
 
   instructions:
@@ -133,16 +133,79 @@ const response = await openai.responses.create({
   input: message,
 
   max_output_tokens: 400,
+
+  /*
+   * Effort de raisonnement reduit : une conversation
+   * courante n'a pas besoin d'un raisonnement approfondi,
+   * et les tokens de raisonnement (invisibles) retardent
+   * le debut de la reponse visible. Si le parametre n'est
+   * pas reconnu pour ce modele, l'appel echouera de facon
+   * explicite -- pas de degradation silencieuse.
+   */
+  reasoning: {
+    effort: "low",
+  },
+
+  stream: true,
 });
 
-    res.json({
-      reply: response.output_text,
-    });
+    res.setHeader(
+      "Content-Type",
+      "text/event-stream"
+    );
+    res.setHeader(
+      "Cache-Control",
+      "no-cache"
+    );
+    res.setHeader(
+      "Connection",
+      "keep-alive"
+    );
+    res.flushHeaders?.();
+
+    let fullText = "";
+
+    for await (const event of stream) {
+      if (
+        event.type ===
+        "response.output_text.delta"
+      ) {
+        fullText += event.delta;
+
+        res.write(
+          `data: ${JSON.stringify({ delta: event.delta })}\n\n`
+        );
+      }
+
+      if (
+        event.type ===
+        "response.completed"
+      ) {
+        res.write(
+          `data: ${JSON.stringify({ done: true, fullText })}\n\n`
+        );
+      }
+    }
+
+    res.end();
   } catch (error) {
     console.error(
       "Erreur OpenAI Chat :",
       error
     );
+
+    if (res.headersSent) {
+      /*
+       * Le streaming a deja commence : on ne peut plus
+       * envoyer un statut HTTP classique. On signale
+       * l'erreur dans le flux SSE lui-meme.
+       */
+      res.write(
+        `data: ${JSON.stringify({ error: "Erreur pendant la generation de la reponse." })}\n\n`
+      );
+      res.end();
+      return;
+    }
 
     res.status(500).json({
       error:
