@@ -135,16 +135,10 @@ const stream = await openai.responses.create({
   max_output_tokens: 400,
 
   /*
-   * Effort de raisonnement reduit : une conversation
-   * courante n'a pas besoin d'un raisonnement approfondi,
-   * et les tokens de raisonnement (invisibles) retardent
-   * le debut de la reponse visible. Si le parametre n'est
-   * pas reconnu pour ce modele, l'appel echouera de facon
-   * explicite -- pas de degradation silencieuse.
+   * reasoning.effort retire temporairement pour isoler
+   * la cause du blocage silencieux -- c'etait le seul
+   * parametre ajoute sans avoir pu etre teste en reel.
    */
-  reasoning: {
-    effort: "low",
-  },
 
   stream: true,
 });
