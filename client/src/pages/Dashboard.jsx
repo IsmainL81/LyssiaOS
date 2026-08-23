@@ -6,6 +6,7 @@
   Dialog,
   DialogTitle,
   DialogContent,
+  Tooltip,
 } from "@mui/material";
 
 import {
@@ -18,6 +19,8 @@ import {
   Mic,
   Send,
   Psychology,
+  Dashboard as DashboardIcon,
+  Person,
 } from "@mui/icons-material";
 
 import LivingPortrait from "../features/avatar/LivingPortrait";
@@ -44,6 +47,21 @@ export default function Dashboard() {
   calculatorOpen,
   setCalculatorOpen,
 ] = useState(false);
+
+  /*
+   * =====================================================
+   * MODE DE VUE : PRESENCE / DETAIL
+   * =====================================================
+   * Presence (defaut) : avatar + salutation + micro,
+   * panneau lateral masque -- l'experience "jumelle du
+   * physique", centree sur la voix.
+   * Detail : disposition actuelle complete, pour taper,
+   * consulter la memoire ou deboguer.
+   */
+  const [
+    viewMode,
+    setViewMode,
+  ] = useState("presence");
 
   const conversationMemories =
   memories.filter(
@@ -73,7 +91,10 @@ const latestMemory =
 
         gridTemplateColumns: {
           xs: "1fr",
-          lg: "minmax(0, 1fr) 285px",
+          lg:
+            viewMode === "detail"
+              ? "minmax(0, 1fr) 285px"
+              : "1fr",
 },
 
         overflow: "hidden",
@@ -168,6 +189,32 @@ const latestMemory =
               gap: 1,
             }}
           >
+            <Tooltip
+              title={
+                viewMode === "detail"
+                  ? "Vue Présence"
+                  : "Vue Détail"
+              }
+            >
+              <IconButton
+                sx={glassButton}
+                onClick={() =>
+                  setViewMode(
+                    (previous) =>
+                      previous === "detail"
+                        ? "presence"
+                        : "detail"
+                  )
+                }
+              >
+                {viewMode === "detail" ? (
+                  <Person />
+                ) : (
+                  <DashboardIcon />
+                )}
+              </IconButton>
+            </Tooltip>
+
             <IconButton sx={glassButton}>
               <Fullscreen />
             </IconButton>
@@ -547,7 +594,10 @@ const latestMemory =
 
           display: {
             xs: "none",
-            lg: "block",
+            lg:
+              viewMode === "detail"
+                ? "block"
+                : "none",
           },
         }}
       >
