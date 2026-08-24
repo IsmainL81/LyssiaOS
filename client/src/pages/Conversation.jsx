@@ -3,6 +3,8 @@ import React, {
   useRef,
   useCallback,
   useEffect,
+  forwardRef,
+  useImperativeHandle,
 } from "react";
 
 import {
@@ -83,9 +85,10 @@ const PHASE_META = {
   speaking: { label: "Lyssia parle", color: "#5ab6d8" },
 };
 
-export default function Conversation({
-  compact = false,
-}) {
+const Conversation = forwardRef(function Conversation(
+  { compact = false },
+  ref
+) {
   const { rememberExchange, memories } = useLyssia();
   const { visionController } = useVision();
 
@@ -301,6 +304,24 @@ export default function Conversation({
 
   /*
    * =====================================================
+   * API IMPÉRATIVE (utilisée par Dashboard)
+   * =====================================================
+   * Permet à un bouton externe (ex. "Analyse cette image")
+   * d'injecter un message dans le MÊME pipeline que le
+   * texte tapé ou la voix reconnue -- une seule histoire,
+   * une seule mémoire, quel que soit le déclencheur.
+   */
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      submitUtterance: (text) => handleUtterance(text, null),
+    }),
+    [handleUtterance]
+  );
+
+  /*
+   * =====================================================
    * ENVOI PAR TEXTE
    * =====================================================
    */
@@ -426,66 +447,6 @@ export default function Conversation({
       }
     };
   }, []);
-
-  /*
-   * =====================================================
-   * DÉMARRAGE AUTOMATIQUE SI PERMISSION DÉJÀ ACCORDÉE
-   * =====================================================
-   * Un navigateur exige un geste utilisateur pour LA
-   * TOUTE PREMIÈRE autorisation micro -- incontournable,
-   * ce n'est pas un choix de Lyssia OS. Mais une fois
-   * cette autorisation accordée pour cette origine, la
-   * réactiver n'en a plus besoin. On vérifie l'état réel
-   * via la Permissions API (lecture seule, ne déclenche
-   * jamais de prompt) et on ne démarre que si elle est
-   * déjà "granted".
-   *
-   * Différent de la tentative du matin : ici la relance
-   * est unique, conditionnée à la permission, et repose
-   * sur runListeningCycle -- déjà à l'épreuve du
-   * redémarrage propre (un seul relais par coupure
-   * naturelle, jamais de relances empilées).
-   */
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function tryAutoStart() {
-      if (!supported || sessionActiveRef.current) return;
-
-      if (!navigator.permissions?.query) {
-        return;
-      }
-
-      try {
-        const status = await navigator.permissions.query({
-          name: "microphone",
-        });
-
-        if (
-          !cancelled &&
-          status.state === "granted" &&
-          !sessionActiveRef.current
-        ) {
-          sessionActiveRef.current = true;
-          setErrorMsg(null);
-          runListeningCycle();
-        }
-      } catch {
-        /*
-         * Permissions API indisponible pour 'microphone'
-         * (Firefox notamment) -- on ne prend aucun risque,
-         * le bouton micro reste le point de départ manuel.
-         */
-      }
-    }
-
-    tryAutoStart();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [supported, runListeningCycle]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -775,4 +736,6 @@ export default function Conversation({
       </Box>
     </Box>
   );
-}
+});
+
+export default Conversation;

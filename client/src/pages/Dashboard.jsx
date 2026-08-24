@@ -16,8 +16,6 @@ import {
   TrackChanges,
   FormatListBulleted,
   QueryStats,
-  Mic,
-  Send,
   Psychology,
   Dashboard as DashboardIcon,
   Person,
@@ -34,7 +32,7 @@ import QuickToolsPanel from "../components/QuickToolsPanel";
 import SystemStatusPanel from "../components/SystemStatusPanel";
 import CalculatorDialog from "../components/CalculatorDialog";
 import AudioWave from "../components/AudioWave";
-import { useState } from "react";
+import { useState, useRef } from "react";
 
 
 export default function Dashboard() {
@@ -47,6 +45,8 @@ export default function Dashboard() {
   calculatorOpen,
   setCalculatorOpen,
 ] = useState(false);
+
+  const conversationRef = useRef(null);
 
   /*
    * =====================================================
@@ -406,6 +406,11 @@ const latestMemory =
           <QuickAction
             icon={<ImageSearch />}
             text="Analyse cette image"
+            onClick={() =>
+              conversationRef.current?.submitUtterance(
+                "Regarde et décris ce que tu vois."
+              )
+            }
           />
 
           <QuickAction
@@ -424,111 +429,6 @@ const latestMemory =
           />
         </Box>
 
-
-        {/* ===================================================
-            BARRE DE CONVERSATION
-        =================================================== */}
-
-        <Box
-          sx={{
-            position: "absolute",
-
-            left: 18,
-            right: 18,
-
-            bottom: 48,
-
-            zIndex: 15,
-
-            display: "flex",
-
-            justifyContent: "center",
-          }}
-        >
-          <Box
-            sx={{
-              width: "100%",
-              maxWidth: 720,
-
-              height: 68,
-
-              display: "flex",
-              alignItems: "center",
-
-              px: 1.5,
-
-              borderRadius: 4,
-
-              background:
-                "rgba(7,13,24,0.94)",
-
-              border:
-                "1px solid rgba(148,163,184,0.13)",
-
-              boxShadow:
-                "0 15px 45px rgba(0,0,0,0.45)",
-
-              backdropFilter: "blur(18px)",
-            }}
-          >
-            <IconButton
-              sx={{
-                width: 46,
-                height: 46,
-
-                mr: 1,
-
-                color: "#b77cff",
-
-                background:
-                  "rgba(139,92,246,0.10)",
-
-                "&:hover": {
-                  background:
-                    "rgba(139,92,246,0.18)",
-                },
-              }}
-            >
-              <Mic />
-            </IconButton>
-
-            <Typography
-              sx={{
-                flex: 1,
-
-                color: "#64748b",
-
-                fontSize: 14,
-              }}
-            >
-              Parlez ou écrivez votre message...
-            </Typography>
-
-            <IconButton
-              sx={{
-                width: 48,
-                height: 48,
-
-                borderRadius: 3,
-
-                color: "white",
-
-                background:
-                  "linear-gradient(135deg, #8b5cf6, #5b21b6)",
-
-                boxShadow:
-                  "0 0 22px rgba(139,92,246,0.30)",
-
-                "&:hover": {
-                  background:
-                    "linear-gradient(135deg, #9f67ff, #6d28d9)",
-                },
-              }}
-            >
-              <Send />
-            </IconButton>
-          </Box>
-        </Box>
 
 
         {/* ===================================================
@@ -577,6 +477,7 @@ const latestMemory =
         }}
         >
           <Conversation
+            ref={conversationRef}
             compact={
               viewMode === "presence"
             }
@@ -757,9 +658,11 @@ const glassButton = {
 function QuickAction({
   icon,
   text,
+  onClick,
 }) {
   return (
     <Box
+      onClick={onClick}
       sx={{
         display: "flex",
 
