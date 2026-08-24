@@ -8,6 +8,7 @@ import MainLayout from "./components/Layout/MainLayout";
 import Dashboard from "./pages/Dashboard";
 import Vision from "./pages/Vision";
 import Memory from "./pages/Memory";
+import Conversation from "./pages/Conversation";
 
 import {
   VisionProvider,
@@ -44,6 +45,10 @@ export default function App() {
   let page;
 
   switch (path) {
+    case "/conversation":
+      page = <Conversation />;
+      break;
+
     case "/vision":
       page = <Vision />;
       break;
