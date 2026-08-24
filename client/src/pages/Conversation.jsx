@@ -7,15 +7,21 @@ import React, {
 
 import {
   Box,
-  Button,
+  IconButton,
   Typography,
   Chip,
   Stack,
+  TextField,
+  Tooltip,
 } from "@mui/material";
 
 import MicIcon from "@mui/icons-material/Mic";
 import StopIcon from "@mui/icons-material/Stop";
 import GraphicEqIcon from "@mui/icons-material/GraphicEq";
+import SendIcon from "@mui/icons-material/Send";
+import AttachFileIcon from "@mui/icons-material/AttachFile";
+import CloseIcon from "@mui/icons-material/Close";
+import DescriptionIcon from "@mui/icons-material/Description";
 
 import { askLyssia } from "../features/ai/AIEngine";
 import { useLyssia } from "../core/LyssiaCore";
@@ -43,21 +49,25 @@ import {
 
 /**
  * =====================================================
- * PAGE CONVERSATION
+ * PAGE CONVERSATION -- UNIFIÉE
  * =====================================================
- * Systeme vocal autonome, separe du chat texte (ChatPanel).
+ * Texte, voix et vision au même endroit, une seule liste
+ * d'échanges. Plus de séparation entre "le chat" et "la
+ * conversation" : un seul point d'entrée (handleUtterance)
+ * traite un message quelle que soit sa modalité d'origine
+ * (tapé ou parlé), route vers la vision si nécessaire, et
+ * ne parle la réponse que si une session vocale est
+ * active -- indépendamment de la façon dont le message est
+ * arrivé.
  *
- * Principe : demarrage explicite (clic), puis boucle
- * automatique tant que la session est active --
- * ecoute -> reflexion -> parole -> ecoute -- sans reclic
- * entre les tours. La reconnaissance tourne en continu
- * y compris pendant que Lyssia parle, ce qui permet une
- * interruption reelle (barge-in) via onSpeechActivity.
- *
- * Un seul redemarrage propre par coupure naturelle de la
- * reconnaissance (onEnd/onError du navigateur) -- jamais
- * de relances empilees.
+ * Utilisée à deux endroits : ancrée en bas du Dashboard
+ * (compact, avatar au-dessus), et en plein écran sur la
+ * route /conversation (compact=false). Même composant,
+ * mêmes capacités, juste une mise en page adaptée.
  */
+
+const MAX_ATTACHMENT_BYTES =
+  20 * 1024 * 1024;
 
 const PHASE = {
   IDLE: "idle",
@@ -73,12 +83,21 @@ const PHASE_META = {
   speaking: { label: "Lyssia parle", color: "#5ab6d8" },
 };
 
-export default function Conversation() {
+export default function Conversation({
+  compact = false,
+}) {
   const { rememberExchange, memories } = useLyssia();
   const { visionController } = useVision();
 
   const [phase, setPhase] = useState(PHASE.IDLE);
-  const [transcript, setTranscript] = useState([]);
+  const [messages, setMessages] = useState([
+    {
+      sender: "lyssia",
+      text: "Bonjour Ismain. Je suis Lyssia. Comment puis-je t'aider ?",
+    },
+  ]);
+  const [input, setInput] = useState("");
+  const [attachment, setAttachment] = useState(null);
   const [liveText, setLiveText] = useState("");
   const [errorMsg, setErrorMsg] = useState(null);
 
@@ -86,6 +105,7 @@ export default function Conversation() {
   const phaseRef = useRef(PHASE.IDLE);
   const recognitionRef = useRef(null);
   const scrollRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const supported =
     isVoiceSupported() && isListeningSupported();
@@ -94,6 +114,224 @@ export default function Conversation() {
     phaseRef.current = newPhase;
     setPhase(newPhase);
   }
+
+  /*
+   * =====================================================
+   * PIÈCE JOINTE
+   * =====================================================
+   */
+
+  function handleFileSelect(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) return;
+
+    if (file.size > MAX_ATTACHMENT_BYTES) {
+      setMessages((previous) => [
+        ...previous,
+        {
+          sender: "lyssia",
+          text: "Ce fichier dépasse 20 Mo, je ne peux pas le joindre.",
+        },
+      ]);
+      return;
+    }
+
+    const isImage = file.type.startsWith("image/");
+    const isPdf = file.type === "application/pdf";
+
+    if (!isImage && !isPdf) {
+      setMessages((previous) => [
+        ...previous,
+        {
+          sender: "lyssia",
+          text: "Je ne peux joindre que des images ou des PDF pour l'instant.",
+        },
+      ]);
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      setAttachment({
+        data: reader.result,
+        filename: file.name,
+        isImage,
+      });
+    };
+
+    reader.onerror = () => {
+      console.warn("Impossible de lire le fichier :", reader.error);
+    };
+
+    reader.readAsDataURL(file);
+  }
+
+  function clearAttachment() {
+    setAttachment(null);
+  }
+
+  function openFilePicker() {
+    fileInputRef.current?.click();
+  }
+
+  /*
+   * =====================================================
+   * TRAITEMENT UNIFIÉ D'UN ÉCHANGE
+   * =====================================================
+   * Point d'entrée unique, quelle que soit la modalité
+   * d'origine (texte tapé ou voix reconnue). Ne parle la
+   * réponse que si une session vocale est active.
+   */
+
+  const handleUtterance = useCallback(
+    async (rawText, attachmentToSend = null) => {
+      if (phaseRef.current === PHASE.THINKING) return;
+
+      const userText = rawText?.trim() || "";
+
+      if (!userText && !attachmentToSend) return;
+
+      const userMessage =
+        userText ||
+        (attachmentToSend?.isImage
+          ? "Voici une image."
+          : "Voici un document.");
+
+      if (phaseRef.current === PHASE.SPEAKING) {
+        stopSpeaking();
+      }
+
+      setMessages((previous) => [
+        ...previous,
+        { sender: "user", text: userMessage, attachment: attachmentToSend },
+      ]);
+
+      transitionTo(PHASE.THINKING);
+      setErrorMsg(null);
+
+      const cognitivePlan = orchestrateCognition({
+        message: userMessage,
+        memories,
+      });
+
+      const isVisionRequest =
+        !attachmentToSend &&
+        cognitivePlan.route === "vision" &&
+        cognitivePlan.action === "observe";
+
+      try {
+        let reply;
+
+        if (isVisionRequest) {
+          /*
+           * Mémorisée automatiquement dans
+           * captureAndAnalyze -> analyzeImageData.
+           */
+          reply = await performVisionRequest(
+            visionController,
+            userMessage
+          );
+        } else {
+          const cognition = analyzeMessage(userMessage, memories);
+
+          const cognitiveContext = prepareCognitiveContext({
+            message: userMessage,
+            cognition,
+            memories,
+          });
+
+          reply = await askLyssia(
+            userMessage,
+            cognitiveContext,
+            attachmentToSend
+          );
+        }
+
+        if (!reply || !reply.trim()) {
+          throw new Error("Réponse vide de Lyssia.");
+        }
+
+        setMessages((previous) => [
+          ...previous,
+          { sender: "lyssia", text: reply },
+        ]);
+
+        if (!isVisionRequest) {
+          rememberExchange(userMessage, reply);
+        }
+
+        if (sessionActiveRef.current) {
+          transitionTo(PHASE.SPEAKING);
+
+          speak(reply, {
+            onEnd: () => {
+              if (sessionActiveRef.current) {
+                transitionTo(PHASE.LISTENING);
+              }
+            },
+          });
+        } else {
+          transitionTo(PHASE.IDLE);
+        }
+      } catch (err) {
+        console.error("Erreur Lyssia :", err);
+
+        setErrorMsg(
+          err.message || "Erreur de communication avec Lyssia."
+        );
+
+        setMessages((previous) => [
+          ...previous,
+          {
+            sender: "lyssia",
+            text: "Je rencontre un problème pour répondre.",
+          },
+        ]);
+
+        transitionTo(
+          sessionActiveRef.current ? PHASE.LISTENING : PHASE.IDLE
+        );
+      }
+    },
+    [memories, visionController, rememberExchange]
+  );
+
+  /*
+   * =====================================================
+   * ENVOI PAR TEXTE
+   * =====================================================
+   */
+
+  async function sendMessage() {
+    if (
+      (!input.trim() && !attachment) ||
+      phaseRef.current === PHASE.THINKING
+    ) {
+      return;
+    }
+
+    const textToSend = input;
+    const attachmentToSend = attachment;
+
+    setInput("");
+    setAttachment(null);
+
+    await handleUtterance(textToSend, attachmentToSend);
+  }
+
+  /*
+   * =====================================================
+   * BOUCLE D'ÉCOUTE VOCALE
+   * =====================================================
+   * Démarrage explicite, puis tours automatiques tant que
+   * la session est active. Reconnaissance continue, y
+   * compris pendant que Lyssia parle (barge-in via
+   * onSpeechActivity). Un seul redémarrage propre par
+   * coupure naturelle -- jamais de relances empilées.
+   */
 
   const runListeningCycle = useCallback(() => {
     if (!sessionActiveRef.current) return;
@@ -129,85 +367,7 @@ export default function Conversation() {
           if (!sessionActiveRef.current) return;
           if (phaseRef.current === PHASE.THINKING) return;
 
-          transitionTo(PHASE.THINKING);
-
-          setTranscript((prev) => [
-            ...prev,
-            { role: "user", text },
-          ]);
-
-          const cognitivePlan =
-            orchestrateCognition({
-              message: text,
-              memories,
-            });
-
-          const isVisionRequest =
-            cognitivePlan.route === "vision" &&
-            cognitivePlan.action === "observe";
-
-          try {
-            let reply;
-
-            if (isVisionRequest) {
-              /*
-               * Vision déclenchée à voix haute -- même
-               * coeur que ChatPanel (performVisionRequest).
-               * La mémorisation se fait déjà à l'intérieur
-               * de captureAndAnalyze, pas besoin de
-               * rememberExchange ici.
-               */
-              reply = await performVisionRequest(
-                visionController,
-                text
-              );
-            } else {
-              const cognition =
-                analyzeMessage(text, memories);
-
-              const cognitiveContext =
-                prepareCognitiveContext({
-                  message: text,
-                  cognition,
-                  memories,
-                });
-
-              reply = await askLyssia(
-                text,
-                cognitiveContext
-              );
-            }
-
-            if (!sessionActiveRef.current) return;
-
-            setTranscript((prev) => [
-              ...prev,
-              { role: "lyssia", text: reply },
-            ]);
-
-            if (!isVisionRequest) {
-              rememberExchange(text, reply);
-            }
-
-            transitionTo(PHASE.SPEAKING);
-
-            speak(reply, {
-              onEnd: () => {
-                if (sessionActiveRef.current) {
-                  transitionTo(PHASE.LISTENING);
-                }
-              },
-            });
-          } catch (err) {
-            setErrorMsg(
-              err.message ||
-                "Erreur de communication avec Lyssia."
-            );
-
-            if (sessionActiveRef.current) {
-              transitionTo(PHASE.LISTENING);
-            }
-          }
+          await handleUtterance(text, null);
         },
 
         onEnd: () => {
@@ -219,10 +379,7 @@ export default function Conversation() {
         },
 
         onError: (err) => {
-          console.warn(
-            "Reconnaissance vocale — erreur :",
-            err
-          );
+          console.warn("Reconnaissance vocale — erreur :", err);
 
           recognitionRef.current = null;
 
@@ -239,26 +396,25 @@ export default function Conversation() {
       sessionActiveRef.current = false;
       transitionTo(PHASE.IDLE);
     }
-  }, []);
+  }, [handleUtterance]);
 
-  function handleStart() {
-    setTranscript([]);
-    setErrorMsg(null);
-    sessionActiveRef.current = true;
-    runListeningCycle();
-  }
+  function toggleVoiceSession() {
+    if (sessionActiveRef.current) {
+      sessionActiveRef.current = false;
+      stopSpeaking();
 
-  function handleStop() {
-    sessionActiveRef.current = false;
-    stopSpeaking();
+      if (recognitionRef.current) {
+        stopListening(recognitionRef.current);
+        recognitionRef.current = null;
+      }
 
-    if (recognitionRef.current) {
-      stopListening(recognitionRef.current);
-      recognitionRef.current = null;
+      setLiveText("");
+      transitionTo(PHASE.IDLE);
+    } else {
+      sessionActiveRef.current = true;
+      setErrorMsg(null);
+      runListeningCycle();
     }
-
-    setLiveText("");
-    transitionTo(PHASE.IDLE);
   }
 
   useEffect(() => {
@@ -273,236 +429,289 @@ export default function Conversation() {
 
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop =
-        scrollRef.current.scrollHeight;
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [transcript, liveText]);
+  }, [messages, liveText]);
 
   const meta = PHASE_META[phase];
-  const isActive = phase !== PHASE.IDLE;
+  const voiceActive = sessionActiveRef.current;
+
+  /*
+   * =====================================================
+   * INTERFACE
+   * =====================================================
+   */
 
   return (
     <Box
       sx={{
         width: "100%",
         height: "100%",
-        minHeight: "calc(100vh - 64px)",
         display: "flex",
         flexDirection: "column",
-        alignItems: "center",
-        background:
-          "radial-gradient(circle at 50% 30%, #172b43 0%, #0b1220 70%)",
         color: "#f2efe9",
-        px: 3,
-        py: 5,
         boxSizing: "border-box",
+        borderRadius: compact ? 4 : 0,
+        overflow: "hidden",
+        background: compact
+          ? "rgba(8,15,27,0.82)"
+          : "radial-gradient(circle at 50% 25%, #172b43 0%, #0b1220 70%)",
+        backdropFilter: compact ? "blur(16px)" : "none",
+        border: compact ? "1px solid rgba(148,163,184,0.14)" : "none",
       }}
     >
-      <Typography
-        variant="h5"
-        sx={{ fontWeight: 700, letterSpacing: "-0.01em", mb: 1 }}
-      >
-        Conversation vocale
-      </Typography>
+      {!compact && (
+        <>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              pt: 4,
+              pb: 2,
+            }}
+          >
+            <Box
+              sx={{
+                position: "relative",
+                width: 120,
+                height: 120,
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                mb: 2,
+                border: `2px solid ${meta.color}88`,
+                boxShadow:
+                  phase !== PHASE.IDLE
+                    ? `0 0 32px 5px ${meta.color}44`
+                    : "none",
+                transition: "border-color 400ms ease, box-shadow 400ms ease",
+                "@keyframes convPulse": {
+                  "0%, 100%": { transform: "scale(1)" },
+                  "50%": { transform: "scale(1.06)" },
+                },
+                animation:
+                  phase === PHASE.LISTENING || phase === PHASE.SPEAKING
+                    ? "convPulse 1.8s ease-in-out infinite"
+                    : "none",
+              }}
+            >
+              {phase === PHASE.THINKING ? (
+                <GraphicEqIcon
+                  sx={{ fontSize: 40, color: meta.color, opacity: 0.85 }}
+                />
+              ) : (
+                <MicIcon
+                  sx={{ fontSize: 40, color: meta.color, opacity: 0.85 }}
+                />
+              )}
+            </Box>
 
-      <Typography
-        variant="body2"
-        sx={{ color: "rgba(242,239,233,0.5)", mb: 4 }}
-      >
-        Système séparé du chat texte — écoute continue,
-        tours automatiques, interruption possible.
-      </Typography>
+            <Chip
+              label={meta.label}
+              sx={{
+                bgcolor: `${meta.color}22`,
+                color: meta.color,
+                border: `1px solid ${meta.color}55`,
+                fontWeight: 600,
+              }}
+            />
 
-      {!supported && (
+            {liveText && (
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "rgba(242,239,233,0.6)",
+                  fontStyle: "italic",
+                  mt: 1.5,
+                }}
+              >
+                « {liveText} »
+              </Typography>
+            )}
+
+            {errorMsg && (
+              <Typography
+                variant="body2"
+                sx={{ color: "#e2685f", mt: 1 }}
+              >
+                {errorMsg}
+              </Typography>
+            )}
+          </Box>
+        </>
+      )}
+
+      {/* =================================================
+          HISTORIQUE
+         ================================================= */}
+
+      {!compact && (
         <Box
+          ref={scrollRef}
           sx={{
-            border: "1px solid rgba(226,164,95,0.4)",
-            borderRadius: 2,
-            p: 2,
-            mb: 3,
-            maxWidth: 480,
-            textAlign: "center",
+            flex: 1,
+            overflowY: "auto",
+            px: 3,
+            pb: 2,
+            display: "flex",
+            flexDirection: "column",
+            gap: 1.5,
           }}
         >
-          <Typography variant="body2" sx={{ color: "#e2a45f" }}>
-            La reconnaissance ou la synthèse vocale n'est
-            pas disponible dans ce navigateur.
-          </Typography>
+          {messages.map((message, index) => (
+            <Stack
+              key={index}
+              direction="row"
+              justifyContent={
+                message.sender === "user" ? "flex-end" : "flex-start"
+              }
+            >
+              <Box
+                sx={{
+                  maxWidth: "80%",
+                  px: 2,
+                  py: 1.2,
+                  borderRadius: 2.5,
+                  bgcolor:
+                    message.sender === "user"
+                      ? "rgba(90,182,216,0.16)"
+                      : "rgba(242,239,233,0.06)",
+                  border:
+                    message.sender === "user"
+                      ? "1px solid rgba(90,182,216,0.3)"
+                      : "1px solid rgba(242,239,233,0.1)",
+                }}
+              >
+                {message.attachment && (
+                  message.attachment.isImage ? (
+                    <Box
+                      component="img"
+                      src={message.attachment.data}
+                      alt={message.attachment.filename || "Pièce jointe"}
+                      sx={{
+                        maxWidth: "100%",
+                        maxHeight: 220,
+                        borderRadius: 2,
+                        display: "block",
+                        mb: message.text ? 1 : 0,
+                      }}
+                    />
+                  ) : (
+                    <Chip
+                      icon={<DescriptionIcon />}
+                      label={message.attachment.filename || "Document"}
+                      size="small"
+                      sx={{
+                        mb: message.text ? 1 : 0,
+                        bgcolor: "rgba(255,255,255,0.1)",
+                        color: "white",
+                      }}
+                    />
+                  )
+                )}
+
+                <Typography variant="body2">{message.text}</Typography>
+              </Box>
+            </Stack>
+          ))}
         </Box>
       )}
 
       {/* =================================================
-          INDICATEUR D'ÉTAT
+          PIÈCE JOINTE EN ATTENTE
+         ================================================= */}
+
+      {attachment && (
+        <Box sx={{ display: "flex", px: compact ? 1.5 : 3, pt: 1 }}>
+          <Chip
+            icon={
+              attachment.isImage ? (
+                <Box
+                  component="img"
+                  src={attachment.data}
+                  sx={{ width: 18, height: 18, borderRadius: "50%", objectFit: "cover" }}
+                />
+              ) : (
+                <DescriptionIcon />
+              )
+            }
+            label={attachment.filename}
+            onDelete={clearAttachment}
+            deleteIcon={<CloseIcon />}
+            size="small"
+            sx={{ bgcolor: "rgba(255,255,255,0.1)", color: "white", maxWidth: "100%" }}
+          />
+        </Box>
+      )}
+
+      {/* =================================================
+          SAISIE
          ================================================= */}
 
       <Box
         sx={{
-          position: "relative",
-          width: 180,
-          height: 180,
-          borderRadius: "50%",
           display: "flex",
           alignItems: "center",
-          justifyContent: "center",
-          mb: 3,
-
-          border: `2px solid ${meta.color}88`,
-
-          boxShadow: isActive
-            ? `0 0 40px 6px ${meta.color}44`
-            : "none",
-
-          transition:
-            "border-color 400ms ease, box-shadow 400ms ease",
-
-          "@keyframes convPulse": {
-            "0%, 100%": { transform: "scale(1)" },
-            "50%": { transform: "scale(1.06)" },
-          },
-
-          animation:
-            phase === PHASE.LISTENING || phase === PHASE.SPEAKING
-              ? "convPulse 1.8s ease-in-out infinite"
-              : "none",
+          gap: 0.5,
+          px: compact ? 1 : 3,
+          py: compact ? 1 : 2,
         }}
       >
-        {phase === PHASE.THINKING ? (
-          <GraphicEqIcon
-            sx={{ fontSize: 56, color: meta.color, opacity: 0.85 }}
-          />
-        ) : (
-          <MicIcon
-            sx={{ fontSize: 56, color: meta.color, opacity: 0.85 }}
-          />
-        )}
-      </Box>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*,application/pdf"
+          onChange={handleFileSelect}
+          style={{ display: "none" }}
+        />
 
-      <Chip
-        label={meta.label}
-        sx={{
-          mb: 3,
-          bgcolor: `${meta.color}22`,
-          color: meta.color,
-          border: `1px solid ${meta.color}55`,
-          fontWeight: 600,
-        }}
-      />
-
-      {liveText && (
-        <Typography
-          variant="body2"
-          sx={{
-            color: "rgba(242,239,233,0.6)",
-            fontStyle: "italic",
-            mb: 2,
-            minHeight: 20,
-          }}
-        >
-          « {liveText} »
-        </Typography>
-      )}
-
-      {errorMsg && (
-        <Typography
-          variant="body2"
-          sx={{ color: "#e2685f", mb: 2 }}
-        >
-          {errorMsg}
-        </Typography>
-      )}
-
-      {/* =================================================
-          COMMANDE
-         ================================================= */}
-
-      {!isActive ? (
-        <Button
-          variant="contained"
-          startIcon={<MicIcon />}
-          disabled={!supported}
-          onClick={handleStart}
-          sx={{
-            bgcolor: "#5ab6d8",
-            "&:hover": { bgcolor: "#4a9fc0" },
-            borderRadius: 3,
-            px: 4,
-            py: 1.2,
-            textTransform: "none",
-            fontWeight: 600,
-          }}
-        >
-          Démarrer la conversation
-        </Button>
-      ) : (
-        <Button
-          variant="outlined"
-          startIcon={<StopIcon />}
-          onClick={handleStop}
-          sx={{
-            borderColor: "rgba(242,239,233,0.3)",
-            color: "#f2efe9",
-            "&:hover": {
-              borderColor: "#e2685f",
-              color: "#e2685f",
-            },
-            borderRadius: 3,
-            px: 4,
-            py: 1.2,
-            textTransform: "none",
-            fontWeight: 600,
-          }}
-        >
-          Arrêter
-        </Button>
-      )}
-
-      {/* =================================================
-          TRANSCRIPT LÉGER
-         ================================================= */}
-
-      <Box
-        ref={scrollRef}
-        sx={{
-          width: "100%",
-          maxWidth: 640,
-          mt: 5,
-          flex: 1,
-          overflowY: "auto",
-          display: "flex",
-          flexDirection: "column",
-          gap: 1.5,
-        }}
-      >
-        {transcript.map((entry, index) => (
-          <Stack
-            key={index}
-            direction="row"
-            justifyContent={
-              entry.role === "user" ? "flex-end" : "flex-start"
-            }
+        <Tooltip title={voiceActive ? "Arrêter l'écoute" : "Parler à Lyssia"}>
+          <IconButton
+            onClick={toggleVoiceSession}
+            disabled={!supported}
+            sx={{
+              color: voiceActive ? "#ff647c" : "#9aa8bd",
+            }}
           >
-            <Box
-              sx={{
-                maxWidth: "80%",
-                px: 2,
-                py: 1,
-                borderRadius: 2.5,
-                bgcolor:
-                  entry.role === "user"
-                    ? "rgba(90,182,216,0.16)"
-                    : "rgba(242,239,233,0.06)",
-                border:
-                  entry.role === "user"
-                    ? "1px solid rgba(90,182,216,0.3)"
-                    : "1px solid rgba(242,239,233,0.1)",
-              }}
-            >
-              <Typography variant="body2">
-                {entry.text}
-              </Typography>
-            </Box>
-          </Stack>
-        ))}
+            {voiceActive ? <StopIcon /> : <MicIcon />}
+          </IconButton>
+        </Tooltip>
+
+        <Tooltip title="Joindre une image ou un PDF">
+          <IconButton onClick={openFilePicker} sx={{ color: "#9aa8bd" }}>
+            <AttachFileIcon />
+          </IconButton>
+        </Tooltip>
+
+        <TextField
+          fullWidth
+          size={compact ? "small" : "medium"}
+          value={input}
+          placeholder="Écris ou parle à Lyssia..."
+          onChange={(event) => setInput(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !event.shiftKey) {
+              event.preventDefault();
+              sendMessage();
+            }
+          }}
+          sx={{
+            input: { color: "white" },
+            fieldset: { borderColor: "#42526b" },
+          }}
+        />
+
+        <IconButton
+          color="primary"
+          onClick={sendMessage}
+          disabled={
+            phase === PHASE.THINKING || (!input.trim() && !attachment)
+          }
+        >
+          <SendIcon />
+        </IconButton>
       </Box>
     </Box>
   );

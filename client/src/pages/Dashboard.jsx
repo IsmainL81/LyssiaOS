@@ -24,7 +24,7 @@ import {
 } from "@mui/icons-material";
 
 import LivingPortraitV2 from "../features/avatar/LivingPortraitV2";
-import ChatPanel from "../features/ai/ChatPanel";
+import Conversation from "./Conversation";
 import CameraView from "../components/CameraView";
 import MemoryPanel from "../components/MemoryPanel";
 import ContextPanel from "../components/ContextPanel";
@@ -576,7 +576,7 @@ const latestMemory =
             "height 0.25s ease",
         }}
         >
-          <ChatPanel
+          <Conversation
             compact={
               viewMode === "presence"
             }
