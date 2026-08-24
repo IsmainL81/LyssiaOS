@@ -133,6 +133,10 @@ const response = await openai.responses.create({
   input: message,
 
   max_output_tokens: 400,
+
+  reasoning: {
+    effort: "low",
+  },
 });
 
     res.json({
