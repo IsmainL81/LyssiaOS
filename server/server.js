@@ -135,7 +135,7 @@ const response = await openai.responses.create({
   max_output_tokens: 400,
 
   reasoning: {
-    effort: "low",
+    effort: "minimal",
   },
 });
 
