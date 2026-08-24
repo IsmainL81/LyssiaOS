@@ -33,7 +33,7 @@ export default function LivingPortrait() {
 
   /*
    * =====================================================
-   * ÉTATS VISUELS
+   * ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â°TATS VISUELS
    * =====================================================
    */
 
@@ -71,8 +71,8 @@ export default function LivingPortrait() {
     const scheduleBlink = () => {
 
       /*
-       * Petit délai aléatoire afin que les clignements
-       * ne soient pas parfaitement mécaniques.
+       * Petit dÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©lai alÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©atoire afin que les clignements
+       * ne soient pas parfaitement mÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â©caniques.
        */
 
       const delay =
@@ -332,7 +332,7 @@ export default function LivingPortrait() {
 
   /*
    * =====================================================
-   * ANIMATION PAR ÉTAT
+   * ANIMATION PAR ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â°TAT
    * =====================================================
    */
 
@@ -350,7 +350,7 @@ export default function LivingPortrait() {
 
   /*
    * =====================================================
-   * ÉTAT VISUEL
+   * ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â°TAT VISUEL
    * =====================================================
    */
 
@@ -373,9 +373,9 @@ export default function LivingPortrait() {
       isSpeaking
         ? "PARLE"
         : isListening
-          ? "ÉCOUTE"
+          ? "ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â°COUTE"
           : isThinking
-            ? "RÉFLEXION"
+            ? "RÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â°FLEXION"
             : visionThinking
               ? "ANALYSE"
               : visionActive
@@ -778,7 +778,7 @@ export default function LivingPortrait() {
 
 
       {/* =================================================
-          HALO ÉCOUTE
+          HALO ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â°COUTE
          ================================================= */}
 
       <Box
@@ -862,141 +862,10 @@ export default function LivingPortrait() {
             "border-color 400ms ease, box-shadow 400ms ease, transform 500ms ease",
         }}
       >
-
-        <Box
-          component="img"
-
-          src="/lyssia-avatar.png"
-
-          alt="Lyssia"
-
-          sx={{
-
-            width:
-              "102%",
-
-            height:
-              "102%",
-
-            objectFit:
-              "cover",
-
-            display:
-              "block",
-
-            position:
-              "absolute",
-
-            left:
-              "-1%",
-
-            top:
-              "-1%",
-
-            objectPosition:
-              gazePosition[
-                gaze
-              ],
-
-            transition:
-              "object-position 900ms ease-in-out",
-          }}
-        />
-
-
-        {/* =================================================
-            CLIGNEMENT
-           ================================================= */}
-
-        <Box
-          sx={{
-
-            position:
-              "absolute",
-
-            inset:
-              0,
-
-            pointerEvents:
-              "none",
-
-            opacity:
-              blink
-                ? 1
-                : 0,
-
-            transition:
-              blink
-                ? "opacity 35ms linear"
-                : "opacity 100ms linear",
-
-            background:
-              "linear-gradient(to bottom, transparent 0%, transparent 31%, rgba(24,31,42,0.96) 34%, rgba(24,31,42,0.96) 38%, transparent 41%, transparent 100%)",
-          }}
-        />
-
-
-        {/* =================================================
-            INDICATEUR VISION
-           ================================================= */}
-
-        {visionActive && (
-
-          <Box
-            sx={{
-
-              position:
-                "absolute",
-
-              top:
-                14,
-
-              right:
-                14,
-
-              px:
-                1.2,
-
-              py:
-                0.6,
-
-              borderRadius:
-                2,
-
-              background:
-                "rgba(8,13,23,0.78)",
-
-              border:
-                "1px solid rgba(89,217,255,0.35)",
-
-              boxShadow:
-                "0 0 15px rgba(89,217,255,0.12)",
-            }}
-          >
-
-            <Typography
-              sx={{
-
-                fontSize:
-                  10,
-
-                fontWeight:
-                  700,
-
-                letterSpacing:
-                  1,
-
-                color:
-                  "#59d9ff",
-              }}
-            >
-              {visionThinking
-                ? "👁️ ANALYSE"
-                : "👁️ VISION"}
-            </Typography>
-
-          </Box>
+        <ColdStartPortrait />
+      </Box>
         )}
+
 
 
         {/* =================================================
@@ -1053,15 +922,14 @@ export default function LivingPortrait() {
                   "#59d9ff",
               }}
             >
-              🗣️ PAROLE
+              ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â£ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â PAROLE
             </Typography>
 
           </Box>
-        )}
 
 
         {/* =================================================
-            INDICATEUR ÉCOUTE
+            INDICATEUR ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â°COUTE
            ================================================= */}
 
         {isListening && (
@@ -1114,11 +982,10 @@ export default function LivingPortrait() {
                   "#ffd166",
               }}
             >
-              🎙️ ÉCOUTE
+              ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â°ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Â¦Ãƒâ€šÃ‚Â½ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¾Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¯ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¸ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â°COUTE
             </Typography>
 
           </Box>
-        )}
 
       </Box>
 

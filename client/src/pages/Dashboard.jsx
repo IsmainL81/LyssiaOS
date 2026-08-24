@@ -23,7 +23,7 @@ import {
   Person,
 } from "@mui/icons-material";
 
-import LivingPortrait from "../features/avatar/LivingPortrait";
+import LivingPortraitV2 from "../features/avatar/LivingPortraitV2";
 import ChatPanel from "../features/ai/ChatPanel";
 import CameraView from "../components/CameraView";
 import MemoryPanel from "../components/MemoryPanel";
@@ -310,7 +310,7 @@ const latestMemory =
             },
           }}
         >
-          <LivingPortrait />
+          <LivingPortraitV2 />
         </Box>
 
 
