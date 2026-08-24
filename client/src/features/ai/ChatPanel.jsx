@@ -1,5 +1,4 @@
-﻿import {
-  useRef,
+import {
   useState,
 } from "react";
 
@@ -9,26 +8,15 @@ import {
   Typography,
   TextField,
   IconButton,
-  Tooltip,
 } from "@mui/material";
 
 import SendIcon from "@mui/icons-material/Send";
-import MicIcon from "@mui/icons-material/Mic";
-import StopIcon from "@mui/icons-material/Stop";
 
 import { askLyssia } from "./AIEngine";
 
 import {
   useLyssia,
 } from "../../core/LyssiaCore";
-
-import {
-  isVoiceSupported,
-  speak,
-  stopSpeaking,
-  isListeningSupported,
-  createListeningSession,
-} from "../voice/VoiceEngine";
 
 import {
   useVision,
@@ -47,19 +35,25 @@ import {
   executeCognitivePlan,
 } from "../../core/CognitiveExecutor.js";
 
-import {
-  CONVERSATION_STATES,
-  setConversationState,
-} from "../../core/ConversationState";
+/**
+ * =====================================================
+ * CHAT PANEL
+ * =====================================================
+ * Chat texte pur -- aucune entree/sortie vocale ici.
+ * L'ecoute et la parole vivent desormais dans leur propre
+ * systeme (pages/Conversation.jsx). Ce panneau et ce
+ * systeme partagent le meme coeur cognitif
+ * (analyzeMessage / orchestrateCognition /
+ * executeCognitivePlan) et le meme point d'entree memoire
+ * (rememberExchange), mais aucun n'a de dependance sur
+ * l'autre.
+ */
 
 export default function ChatPanel({
   compact = false,
 }) {
   const {
   setSystemState,
-  conversationState,
-  updateConversationState:
-    updateConversationStateCore,
   memories,
   searchMemories,
   rememberExchange,
@@ -89,29 +83,6 @@ export default function ChatPanel({
     loading,
     setLoading,
   ] = useState(false);
-
-  const [
-    listening,
-    setListening,
-  ] = useState(false);
-
-  const [
-    speaking,
-    setSpeaking,
-  ] = useState(false);
-
-  const listeningSessionRef =
-    useRef(null);
-
-  const speechPauseTimerRef =
-    useRef(null);
-
-  const interruptingRef =
-  useRef(false);
-
-  function updateConversationState(state) {
-  setConversationState(state);
-  }
 
   /*
    * =====================================================
@@ -305,149 +276,6 @@ Si un souvenir concerne une perception visuelle passée, indique clairement qu'i
 
   /*
    * =====================================================
-   * VOIX
-   * =====================================================
-   */
-
-  async function speakResponse(
-    text
-  ) {
-    if (!text?.trim()) {
-      return;
-    }
-
-    if (
-      !isVoiceSupported()
-    ) {
-      setSpeaking(false);
-
-      updateConversationState(
-        CONVERSATION_STATES.IDLE
-    );
-
-      setSystemState(
-        (previous) => ({
-          ...previous,
-          ai: "online",
-          voice: "offline",
-        })
-      );
-
-      return;
-    }
-
-    interruptingRef.current =
-      false;
-
-    setSpeaking(true);
-
-    setSystemState(
-      (previous) => ({
-        ...previous,
-        ai: "speaking",
-        voice: "speaking",
-      })
-    );
-
-    updateConversationState(
-      CONVERSATION_STATES.SPEAKING
-    );
-
-    try {
-      await speak(
-        text,
-        {
-          language: "fr-FR",
-          volume: 1,
-
-          onStart: () => {
-            if (
-              interruptingRef.current
-            ) {
-              return;
-            }
-
-            setSpeaking(true);
-
-            setSystemState(
-              (previous) => ({
-                ...previous,
-                ai: "speaking",
-                voice: "speaking",
-              })
-            );
-          },
-
-          onEnd: () => {
-            if (
-              interruptingRef.current
-            ) {
-              return;
-            }
-
-            setSpeaking(false);
-
-            setSystemState(
-              (previous) => ({
-                ...previous,
-                ai: "online",
-                voice: "online",
-              })
-            );
-          },
-
-          onError: (
-            error
-          ) => {
-            if (
-              interruptingRef.current
-            ) {
-              return;
-            }
-
-            console.warn(
-              "Erreur VoiceEngine :",
-              error
-            );
-
-            setSpeaking(false);
-
-            setSystemState(
-              (previous) => ({
-                ...previous,
-                ai: "online",
-                voice: "error",
-              })
-            );
-          },
-        }
-      );
-    } catch (error) {
-      if (
-        interruptingRef.current
-      ) {
-        return;
-      }
-
-      console.error(
-        "Erreur synthèse vocale :",
-        error
-      );
-
-      setSpeaking(false);
-
-      setSystemState(
-        (previous) => ({
-          ...previous,
-          ai: "online",
-          voice: "error",
-        })
-      );
-    }
-  }
-
-  /*
-   * =====================================================
    * DÉTECTION VISION
    * =====================================================
    */
@@ -525,13 +353,6 @@ RÈGLES DE RÉPONSE :
       );
     }
 
-    interruptingRef.current =
-      false;
-
-    stopSpeaking();
-
-    setSpeaking(false);
-
     setLoading(true);
 
     setSystemState(
@@ -591,13 +412,9 @@ RÈGLES DE RÉPONSE :
       setSystemState(
         (previous) => ({
           ...previous,
-          ai: "speaking",
+          ai: "online",
           vision: "online",
         })
-      );
-
-      await speakResponse(
-        response
       );
 
       return response;
@@ -608,7 +425,6 @@ RÈGLES DE RÉPONSE :
       );
 
       setLoading(false);
-      setSpeaking(false);
 
       setMessages(
         (previous) => [
@@ -719,9 +535,6 @@ RÈGLES DE RÉPONSE :
 
     console.log("🧠 LYSSIA — PLAN COGNITIF V2",{intent:cognitivePlan.intent,priority:cognitivePlan.priority,needsMemory:cognitivePlan.needsMemory,needsVision:cognitivePlan.needsVision,route:cognitivePlan.route,action:cognitivePlan.action,memories:cognitivePlan.memories,});
 
-    interruptingRef.current =
-      false;
-
     setMessages(
       (previous) => [
         ...previous,
@@ -734,31 +547,6 @@ RÈGLES DE RÉPONSE :
     );
 
     setInput("");
-
-    /*
-     * -----------------------------------------------------
-     * STOP
-     * -----------------------------------------------------
-     * Detection normalisee (accents, limites de mot) via
-     * CognitiveEngine V2 - couvre "arrete", "stop", "coupe",
-     * "desactive", etc. Aucun mecanisme equivalent n'existait
-     * pour le texte tape avant cet ajout (seul le bouton Stop
-     * de l'interface declenchait cet arret).
-     */
-
-    if (cognitivePlan.action === "stop") {
-      await executeCognitivePlan(
-        cognitivePlan,
-        {
-          onStop: () => {
-            stopSpeaking();
-            setSpeaking(false);
-          },
-        }
-      );
-
-      return;
-    }
 
     /*
      * -----------------------------------------------------
@@ -793,10 +581,6 @@ RÈGLES DE RÉPONSE :
      */
 
     setLoading(true);
-
-    stopSpeaking();
-
-    setSpeaking(false);
 
     setSystemState(
       (previous) => ({
@@ -859,6 +643,13 @@ RÈGLES DE RÉPONSE :
 
       setLoading(false);
 
+      setSystemState(
+        (previous) => ({
+          ...previous,
+          ai: "online",
+        })
+      );
+
       /*
        * ---------------------------------------------------
        * MÉMOIRE CONVERSATIONNELLE
@@ -869,10 +660,6 @@ RÈGLES DE RÉPONSE :
         userMessage,
         response
       );
-
-      await speakResponse(
-        response
-      );
     } catch (error) {
       console.error(
         "Erreur Lyssia :",
@@ -880,7 +667,6 @@ RÈGLES DE RÉPONSE :
       );
 
       setLoading(false);
-      setSpeaking(false);
 
       setMessages(
         (previous) => [
@@ -912,8 +698,7 @@ RÈGLES DE RÉPONSE :
   async function sendMessage() {
     if (
       !input.trim() ||
-      loading ||
-      listening
+      loading
     ) {
       return;
     }
@@ -921,302 +706,6 @@ RÈGLES DE RÉPONSE :
     await processMessage(
       input
     );
-  }
-
-  /*
-   * =====================================================
-   * ARRÊT MICRO
-   * =====================================================
-   */
-
-  function stopVoiceListening() {
-  if (speechPauseTimerRef.current) {
-    clearTimeout(
-      speechPauseTimerRef.current
-    );
-
-    speechPauseTimerRef.current =
-      null;
-  }
-
-  if (
-    listeningSessionRef.current
-  ) {
-      try {
-        listeningSessionRef.current.stop();
-      } catch (error) {
-        console.warn(
-          "Impossible d'arrêter l'écoute :",
-          error
-        );
-      }
-    }
-
-    listeningSessionRef.current =
-      null;
-
-    setListening(false);
-
-    setSystemState(
-      (previous) => ({
-        ...previous,
-        ai: "online",
-        voice: "online",
-      })
-    );
-  }
-
-  /*
-   * =====================================================
-   * DÉMARRAGE MICRO
-   * =====================================================
-   */
-
-  function startVoiceListening() {
-    console.log(
-  "🎤 Lyssia — startVoiceListening() déclenché"
-);
-    if (listening) {
-      return;
-    }
-
-    if (
-      loading &&
-      !speaking
-    ) {
-      return;
-    }
-
-    if (
-      !isListeningSupported()
-    ) {
-      setMessages(
-        (previous) => [
-          ...previous,
-          {
-            sender:
-              "lyssia",
-            text:
-              "La reconnaissance vocale n'est pas disponible dans ce navigateur.",
-          },
-        ]
-      );
-
-      return;
-    }
-
-    /*
-     * Le micro peut interrompre Lyssia.
-     */
-
-    if (speaking) {
-      interruptingRef.current =
-        true;
-
-      stopSpeaking();
-
-      setSpeaking(false);
-    }
-
-    stopSpeaking();
-
-    setInput("");
-
-    setListening(true);
-
-    setSystemState(
-      (previous) => ({
-        ...previous,
-        ai: "listening",
-        voice: "listening",
-      })
-    );
-
-    updateConversationState(
-      CONVERSATION_STATES.LISTENING
-    );
-
-    try {
-      const session =
-        createListeningSession(
-          {
-            language:
-              "fr-FR",
-
-            continuous:
-              true,
-
-            interimResults:
-              true,
-
-            onStart:
-              () => {
-                setListening(
-                  true
-                );
-
-                setSystemState(
-                  (previous) => ({
-                    ...previous,
-                    ai: "listening",
-                    voice: "listening",
-                  })
-                );
-              },
-
-            onInterimResult:
-              (
-                text
-              ) => {
-                setInput(
-                  text
-                );
-              },
-
-            onFinalResult:
-              (
-                text
-              ) => {
-                setInput(
-                  text
-                );
-              },
-
-            /*
-             * Signal d'activité brut (interim + final).
-             * Sert uniquement a l'interruption : si Lyssia
-             * parle et qu'une activite vocale reelle est
-             * captee, on la coupe immediatement, sans
-             * attendre la fin de l'enonce ni un clic.
-             */
-            onSpeechActivity:
-              (
-                text
-              ) => {
-                if (
-                  speaking &&
-                  text?.trim().length > 1
-                ) {
-                  interruptingRef.current =
-                    true;
-
-                  stopSpeaking();
-
-                  setSpeaking(false);
-
-                  setSystemState(
-                    (previous) => ({
-                      ...previous,
-                      ai: "listening",
-                      voice: "listening",
-                    })
-                  );
-                }
-              },
-
-            onEnd:
-  async ({
-    text,
-  }) => {
-    if (speechPauseTimerRef.current) {
-      clearTimeout(
-        speechPauseTimerRef.current
-      );
-
-      speechPauseTimerRef.current =
-        null;
-    }
-
-    listeningSessionRef.current =
-      null;
-
-                setListening(
-                  false
-                );
-
-                if (
-                  !text?.trim()
-                ) {
-                  setInput(
-                    ""
-                  );
-
-                  setSystemState(
-                    (previous) => ({
-                      ...previous,
-                      ai: "online",
-                      voice: "online",
-                    })
-                  );
-
-                  return;
-                }
-
-                updateConversationState(
-                    CONVERSATION_STATES.THINKING
-                );
-
-                updateConversationState(
-                    CONVERSATION_STATES.IDLE
-                );
-
-                await processMessage(
-                  text
-                );
-              },
-
-            onError:
-              (
-                error
-              ) => {
-                console.warn(
-                  "Erreur reconnaissance vocale :",
-                  error
-                );
-
-                listeningSessionRef.current =
-                  null;
-
-                setListening(
-                  false
-                );
-
-                setSystemState(
-                  (previous) => ({
-                    ...previous,
-                    ai: "online",
-                    voice: "error",
-                  })
-                );
-              },
-          }
-        );
-
-      listeningSessionRef.current =
-        session;
-
-      session.start();
-    } catch (error) {
-      console.error(
-        "Impossible de démarrer le microphone :",
-        error
-      );
-
-      listeningSessionRef.current =
-        null;
-
-      setListening(
-        false
-      );
-
-      setSystemState(
-        (previous) => ({
-          ...previous,
-          ai: "online",
-          voice: "error",
-        })
-      );
-    }
   }
 
   /*
@@ -1332,25 +821,7 @@ RÈGLES DE RÉPONSE :
           )
         )}
 
-        {listening && (
-          <Typography
-            sx={{
-              color:
-                "#ffd166",
-
-              fontStyle:
-                "italic",
-
-              mb: 1,
-            }}
-          >
-            Lyssia vous écoute...
-          </Typography>
-        )}
-
-        {loading &&
-          !listening &&
-          !speaking && (
+        {loading && (
             <Typography
               sx={{
                 color:
@@ -1363,23 +834,6 @@ RÈGLES DE RÉPONSE :
               }}
             >
               Lyssia réfléchit...
-            </Typography>
-          )}
-
-        {speaking &&
-          !listening && (
-            <Typography
-              sx={{
-                color:
-                  "#59d9ff",
-
-                fontStyle:
-                  "italic",
-
-                mb: 1,
-              }}
-            >
-              Lyssia parle...
             </Typography>
           )}
       </Box>
@@ -1407,13 +861,7 @@ RÈGLES DE RÉPONSE :
         <TextField
           fullWidth
           value={input}
-          placeholder={
-            listening
-              ? "Lyssia vous écoute..."
-              : speaking
-                ? "Lyssia parle..."
-                : "Écris un message..."
-          }
+          placeholder="Écris un message..."
           onChange={(
             event
           ) =>
@@ -1434,9 +882,6 @@ RÈGLES DE RÉPONSE :
               sendMessage();
             }
           }}
-          disabled={
-            listening
-          }
           sx={{
             input: {
               color:
@@ -1451,48 +896,6 @@ RÈGLES DE RÉPONSE :
         />
 
         {/* =================================================
-            MICRO
-           ================================================= */}
-
-        <Tooltip
-          title={
-            speaking
-              ? "Interrompre Lyssia et parler"
-              : listening
-                ? "Arrêter l'écoute"
-                : "Parler à Lyssia"
-          }
-        >
-          <span>
-            <IconButton
-              onClick={
-                listening
-                  ? stopVoiceListening
-                  : startVoiceListening
-              }
-              disabled={
-                loading &&
-                !speaking
-              }
-              sx={{
-                color:
-                  speaking
-                    ? "#59d9ff"
-                    : listening
-                      ? "#ff647c"
-                      : "#ffd166",
-              }}
-            >
-              {listening ? (
-                <StopIcon />
-              ) : (
-                <MicIcon />
-              )}
-            </IconButton>
-          </span>
-        </Tooltip>
-
-        {/* =================================================
             ENVOYER
            ================================================= */}
 
@@ -1503,8 +906,6 @@ RÈGLES DE RÉPONSE :
           }
           disabled={
             loading ||
-            listening ||
-            speaking ||
             !input.trim()
           }
         >
@@ -1514,12 +915,3 @@ RÈGLES DE RÉPONSE :
     </Paper>
   );
 }
-
-
-
-
-
-
-
-
-
