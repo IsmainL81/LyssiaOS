@@ -39,6 +39,11 @@ export default function Memory() {
     setTypeFilter,
   ] = useState("all");
 
+  const [
+    categoryFilter,
+    setCategoryFilter,
+  ] = useState("all");
+
   const filteredMemories =
     useMemo(() => {
       let result =
@@ -55,13 +60,55 @@ export default function Memory() {
           );
       }
 
+      if (
+        categoryFilter !== "all"
+      ) {
+        result =
+          result.filter(
+            (memory) =>
+              memory.category ===
+              categoryFilter
+          );
+      }
+
       return result;
     }, [
       memories,
       search,
       typeFilter,
+      categoryFilter,
       searchMemories,
     ]);
+
+  function getCategoryLabel(
+    category
+  ) {
+    switch (category) {
+      case "semantic":
+        return "Sémantique";
+
+      case "episodic":
+        return "Épisodique";
+
+      default:
+        return "—";
+    }
+  }
+
+  function getCategoryColor(
+    category
+  ) {
+    switch (category) {
+      case "semantic":
+        return "warning";
+
+      case "episodic":
+        return "primary";
+
+      default:
+        return "default";
+    }
+  }
 
   function getTypeLabel(
     type
@@ -351,6 +398,32 @@ export default function Memory() {
               </MenuItem>
             </Select>
 
+            <Select
+              value={
+                categoryFilter
+              }
+              onChange={(event) =>
+                setCategoryFilter(
+                  event.target.value
+                )
+              }
+              sx={{
+                minWidth: 190,
+              }}
+            >
+              <MenuItem value="all">
+                Toutes catégories
+              </MenuItem>
+
+              <MenuItem value="episodic">
+                Épisodique
+              </MenuItem>
+
+              <MenuItem value="semantic">
+                Sémantique
+              </MenuItem>
+            </Select>
+
             <Button
               variant="outlined"
               color="error"
@@ -481,6 +554,17 @@ export default function Memory() {
                           )}
                           color={getTypeColor(
                             memory.type
+                          )}
+                        />
+
+                        <Chip
+                          size="small"
+                          variant="outlined"
+                          label={getCategoryLabel(
+                            memory.category
+                          )}
+                          color={getCategoryColor(
+                            memory.category
                           )}
                         />
 

@@ -62,7 +62,7 @@ export default function ChatPanel({
     updateConversationStateCore,
   memories,
   searchMemories,
-  addConversationMemory,
+  rememberExchange,
 } = useLyssia();
 
   const {
@@ -651,45 +651,17 @@ RÈGLES DE RÉPONSE :
      * On évite donc de créer un doublon.
      */
 
-
     /*
-     * On mémorise uniquement un échange suffisamment
-     * significatif.
+     * Point d'entrée unique vers la mémoire (LyssiaCore) --
+     * partagé avec Conversation.jsx (mode vocal). Garde les
+     * guards et déclenche l'extraction sémantique en tâche
+     * de fond.
      */
 
-    if (
-      !userMessage?.trim() ||
-      !assistantResponse?.trim()
-    ) {
-      return;
-    }
-
-    /*
-     * Évite d'enregistrer les messages très courts
-     * du genre "ok", "oui", "merci".
-     */
-
-    if (
-      userMessage.trim().length <
-      4
-    ) {
-      return;
-    }
-
-    try {
-      addConversationMemory(
-        `Utilisateur : ${userMessage.trim()}\nLyssia : ${assistantResponse.trim()}`,
-        {
-          timestamp:
-            new Date().toISOString(),
-        }
-      );
-    } catch (error) {
-      console.warn(
-        "Impossible de mémoriser la conversation :",
-        error
-      );
-    }
+    rememberExchange(
+      userMessage,
+      assistantResponse
+    );
   }
 
   /*

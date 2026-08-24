@@ -9,6 +9,9 @@
 const API_URL =
   "http://localhost:3001/api/chat";
 
+const MEMORY_EXTRACT_URL =
+  "http://localhost:3001/api/memory/extract";
+
 /**
  * =====================================================
  * CONVERSATION AVEC LYSSIA
@@ -80,4 +83,41 @@ export async function askLyssia(
   }
 
   return data.reply;
+}
+
+/**
+ * =====================================================
+ * EXTRACTION DE MÉMOIRE SÉMANTIQUE
+ * =====================================================
+ */
+
+export async function askMemoryExtraction(
+  userMessage,
+  assistantResponse
+) {
+  const response =
+    await fetch(MEMORY_EXTRACT_URL, {
+      method: "POST",
+
+      headers: {
+        "Content-Type":
+          "application/json",
+      },
+
+      body: JSON.stringify({
+        userMessage,
+        assistantResponse,
+      }),
+    });
+
+  if (!response.ok) {
+    throw new Error(
+      `Erreur du serveur Lyssia (extraction) : ${response.status}`
+    );
+  }
+
+  const data =
+    await response.json();
+
+  return data.facts;
 }

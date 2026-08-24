@@ -239,6 +239,83 @@ app.post("/api/vision", async (req, res) => {
 
 /**
  * =====================================================
+ * MÉMOIRE — EXTRACTION SÉMANTIQUE
+ * =====================================================
+ * Isole les faits durables d'un échange, à part du chat
+ * principal. reasoning: minimal -- tâche d'extraction
+ * courte, pas besoin de raisonnement profond.
+ */
+
+app.post("/api/memory/extract", async (req, res) => {
+  try {
+  const {
+    userMessage,
+    assistantResponse,
+  } = req.body;
+
+  if (
+    !userMessage ||
+    !assistantResponse
+  ) {
+    return res.status(400).json({
+      error:
+        "Échange incomplet.",
+    });
+  }
+
+  const extractionInstructions = `
+Tu analyses un échange de conversation entre Ismain et Lyssia
+pour en extraire des faits durables à mémoriser sur le long terme.
+
+Un fait durable est une information stable sur Ismain : préférence,
+projet en cours, décision prise, fait personnel, contrainte, objectif.
+
+N'extrais pas les questions ponctuelles, le small talk, ou les
+détails déjà évidents ou temporaires.
+
+Si aucun fait durable nouveau n'apparaît dans cet échange,
+réponds uniquement : AUCUN
+
+Sinon, liste chaque fait sur une ligne commençant par "- ",
+formulé de façon neutre et autonome (compréhensible sans le
+contexte de l'échange).
+`;
+
+  const response = await openai.responses.create({
+    model: "gpt-5-mini",
+
+    instructions:
+      extractionInstructions,
+
+    input:
+      `Utilisateur : ${userMessage}\nLyssia : ${assistantResponse}`,
+
+    max_output_tokens: 150,
+
+    reasoning: {
+      effort: "minimal",
+    },
+  });
+
+    res.json({
+      facts: response.output_text,
+    });
+  } catch (error) {
+    console.error(
+      "Erreur extraction mémoire :",
+      error
+    );
+
+    res.status(500).json({
+      error:
+        "Erreur serveur lors de l'extraction mémoire.",
+    });
+  }
+});
+
+
+/**
+ * =====================================================
  * DÉMARRAGE
  * =====================================================
  */

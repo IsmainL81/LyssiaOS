@@ -22,6 +22,8 @@ import {
 
 import { createInitialStatus } from "./StatusEngine";
 
+import { askMemoryExtraction } from "../features/ai/AIEngine";
+
 const LyssiaContext =
   createContext(null);
 
@@ -149,6 +151,7 @@ useEffect(() => {
   function addMemory({
     content,
     type = "general",
+    category = "episodic",
     importance = "normal",
     source = "user",
     metadata = {},
@@ -170,6 +173,18 @@ useEffect(() => {
         String(content).trim(),
 
       type,
+
+      /*
+       * category distingue le rôle cognitif du souvenir :
+       * "episodic"  -> un événement vécu (conversation, vision)
+       * "semantic"  -> un fait durable extrait, indépendant
+       *                de l'échange qui l'a produit
+       *
+       * La mémoire de travail n'est pas stockée ici : elle
+       * est assemblée à la volée par buildWorkingContext().
+       */
+
+      category,
 
       importance,
 
@@ -210,6 +225,9 @@ useEffect(() => {
 
       type:
         "vision",
+
+      category:
+        "episodic",
 
       importance:
         "normal",
@@ -276,6 +294,9 @@ useEffect(() => {
       type:
         "conversation",
 
+      category:
+        "episodic",
+
       importance:
         "normal",
 
@@ -288,18 +309,170 @@ useEffect(() => {
 
   /*
    * =====================================================
+   * MÉMOIRE SÉMANTIQUE
+   * =====================================================
+   * Faits durables, indépendants de l'échange d'origine --
+   * pas "Ismain a dit qu'il prépare l'IOBSP1" (episodic)
+   * mais "Ismain prépare l'IOBSP1" (semantic).
+   */
+
+  function addSemanticMemory(
+    content,
+    metadata = {}
+  ) {
+    return addMemory({
+      content,
+
+      type:
+        "fact",
+
+      category:
+        "semantic",
+
+      importance:
+        "high",
+
+      source:
+        "extraction",
+
+      metadata,
+    });
+  }
+
+  async function extractSemanticMemories(
+    userMessage,
+    assistantResponse
+  ) {
+    try {
+      const rawFacts =
+        await askMemoryExtraction(
+          userMessage,
+          assistantResponse
+        );
+
+      if (
+        !rawFacts ||
+        rawFacts.trim().toUpperCase() ===
+          "AUCUN"
+      ) {
+        return;
+      }
+
+      const facts = rawFacts
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) =>
+          line.startsWith("-")
+        )
+        .map((line) =>
+          line.replace(/^-+\s*/, "").trim()
+        )
+        .filter(Boolean);
+
+      facts.forEach((fact) => {
+        const alreadyKnown =
+          memories.some(
+            (memory) =>
+              memory.category ===
+                "semantic" &&
+              memory.content.toLowerCase() ===
+                fact.toLowerCase()
+          );
+
+        if (!alreadyKnown) {
+          addSemanticMemory(fact);
+        }
+      });
+    } catch (error) {
+      console.warn(
+        "Extraction mémoire sémantique impossible :",
+        error
+      );
+    }
+  }
+
+  /*
+   * =====================================================
+   * SE SOUVENIR D'UN ÉCHANGE (point d'entrée unique)
+   * =====================================================
+   * Utilisé par ChatPanel (texte) ET Conversation (voix) --
+   * un seul chemin vers la mémoire, quelle que soit la
+   * modalité d'interaction.
+   */
+
+  function rememberExchange(
+    userMessage,
+    assistantResponse
+  ) {
+    if (
+      !userMessage?.trim() ||
+      !assistantResponse?.trim()
+    ) {
+      return;
+    }
+
+    /*
+     * Évite d'enregistrer les échanges très courts
+     * du genre "ok", "oui", "merci".
+     */
+
+    if (
+      userMessage.trim().length <
+      4
+    ) {
+      return;
+    }
+
+    try {
+      addConversationMemory(
+        `Utilisateur : ${userMessage.trim()}\nLyssia : ${assistantResponse.trim()}`,
+        {
+          timestamp:
+            new Date().toISOString(),
+        }
+      );
+    } catch (error) {
+      console.warn(
+        "Impossible de mémoriser la conversation :",
+        error
+      );
+    }
+
+    /*
+     * Extraction sémantique en arrière-plan -- ne bloque
+     * jamais la conversation, échoue silencieusement.
+     */
+
+    extractSemanticMemories(
+      userMessage.trim(),
+      assistantResponse.trim()
+    );
+  }
+
+  /*
+   * =====================================================
    * RECHERCHER DANS LA MÉMOIRE
    * =====================================================
    */
 
   function searchMemories(
-    query
+    query,
+    { category } = {}
   ) {
+    let result = memories;
+
+    if (category) {
+      result = result.filter(
+        (memory) =>
+          memory.category === category
+      );
+    }
+
     if (
       !query ||
       !String(query).trim()
     ) {
-      return memories;
+      return result;
     }
 
     const normalizedQuery =
@@ -307,7 +480,7 @@ useEffect(() => {
         .toLowerCase()
         .trim();
 
-    return memories.filter(
+    return result.filter(
       (memory) =>
         memory.content
           ?.toLowerCase()
@@ -320,6 +493,33 @@ useEffect(() => {
             normalizedQuery
           )
     );
+  }
+
+  /*
+   * =====================================================
+   * MÉMOIRE DE TRAVAIL (assemblée, pas stockée)
+   * =====================================================
+   * Contexte actuel pour le tour en cours : les événements
+   * récents + les faits sémantiques pertinents. C'est ce
+   * qui alimente cognitiveContext côté serveur.
+   */
+
+  function buildWorkingContext({
+    query = "",
+    recentLimit = 5,
+    semanticLimit = 5,
+  } = {}) {
+    return {
+      recentEpisodic:
+        getRecentMemories(recentLimit, {
+          category: "episodic",
+        }),
+
+      relevantSemantic:
+        searchMemories(query, {
+          category: "semantic",
+        }).slice(0, semanticLimit),
+    };
   }
 
   /*
@@ -358,9 +558,17 @@ useEffect(() => {
    */
 
   function getRecentMemories(
-    limit = 10
+    limit = 10,
+    { category } = {}
   ) {
-    return memories.slice(
+    const source = category
+      ? memories.filter(
+          (memory) =>
+            memory.category === category
+        )
+      : memories;
+
+    return source.slice(
       0,
       limit
     );
@@ -404,6 +612,14 @@ useEffect(() => {
       addVisionMemory,
 
       addConversationMemory,
+
+      addSemanticMemory,
+
+      extractSemanticMemories,
+
+      rememberExchange,
+
+      buildWorkingContext,
 
       searchMemories,
 

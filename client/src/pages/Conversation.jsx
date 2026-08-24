@@ -18,6 +18,7 @@ import StopIcon from "@mui/icons-material/Stop";
 import GraphicEqIcon from "@mui/icons-material/GraphicEq";
 
 import { askLyssia } from "../features/ai/AIEngine";
+import { useLyssia } from "../core/LyssiaCore";
 
 import {
   isVoiceSupported,
@@ -62,6 +63,8 @@ const PHASE_META = {
 };
 
 export default function Conversation() {
+  const { rememberExchange } = useLyssia();
+
   const [phase, setPhase] = useState(PHASE.IDLE);
   const [transcript, setTranscript] = useState([]);
   const [liveText, setLiveText] = useState("");
@@ -130,6 +133,8 @@ export default function Conversation() {
               ...prev,
               { role: "lyssia", text: reply },
             ]);
+
+            rememberExchange(text, reply);
 
             transitionTo(PHASE.SPEAKING);
 
