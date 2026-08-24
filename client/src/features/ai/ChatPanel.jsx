@@ -41,6 +41,10 @@ import {
   executeCognitivePlan,
 } from "../../core/CognitiveExecutor.js";
 
+import {
+  performVisionRequest,
+} from "../vision/visionRequest";
+
 /*
  * 20 Mo bruts -> ~27 Mo en base64, sous la limite
  * OpenAI de 32 Mo combinés par requête.
@@ -447,33 +451,6 @@ Si un souvenir concerne une perception visuelle passée, indique clairement qu'i
    */
 
   async function processVisionRequest(plan = null) {
-  const visionRequest =
-    plan?.message?.trim() ||
-    "Regarde attentivement cette scène.";
-
-  const visionPrompt = `
-${visionRequest}
-
-Réponds comme Lyssia dans une conversation orale naturelle.
-
-RÈGLES DE RÉPONSE :
-- Réponds en français.
-- Sois très concise.
-- Pour une demande générale d'observation, réponds en UNE ou DEUX phrases maximum.
-- Maximum 300 caractères environ.
-- Donne seulement les éléments visuellement importants.
-- Ne fais pas de liste.
-- Ne donne pas de suggestions ou de conseils sauf si l'utilisateur les demande explicitement.
-- Ne commence pas par « Merci — voici ce que j'observe ». 
-- Ne répète pas la demande de l'utilisateur.
-- Ne prétends jamais voir un élément qui n'est pas clairement visible.
-`;
-    if (!visionController) {
-      throw new Error(
-        "Le moteur de vision de Lyssia n'est pas disponible."
-      );
-    }
-
     setLoading(true);
 
     setSystemState(
@@ -498,23 +475,10 @@ RÈGLES DE RÉPONSE :
 
     try {
       const response =
-        await visionController.captureAndAnalyze(
-          {
-            prompt:
-  visionPrompt,
-
-            speak: false,
-          }
+        await performVisionRequest(
+          visionController,
+          plan?.message
         );
-
-      if (
-        !response ||
-        !response.trim()
-      ) {
-        throw new Error(
-          "La vision n'a retourné aucune réponse."
-        );
-      }
 
       setMessages(
         (previous) => [

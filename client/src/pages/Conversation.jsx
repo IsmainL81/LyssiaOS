@@ -19,6 +19,17 @@ import GraphicEqIcon from "@mui/icons-material/GraphicEq";
 
 import { askLyssia } from "../features/ai/AIEngine";
 import { useLyssia } from "../core/LyssiaCore";
+import { useVision } from "../features/vision/VisionContext";
+import { performVisionRequest } from "../features/vision/visionRequest";
+
+import {
+  analyzeMessage,
+  prepareCognitiveContext,
+} from "../core/CognitiveEngine";
+
+import {
+  orchestrateCognition,
+} from "../core/CognitiveEngine.v2.js";
 
 import {
   isVoiceSupported,
@@ -63,7 +74,8 @@ const PHASE_META = {
 };
 
 export default function Conversation() {
-  const { rememberExchange } = useLyssia();
+  const { rememberExchange, memories } = useLyssia();
+  const { visionController } = useVision();
 
   const [phase, setPhase] = useState(PHASE.IDLE);
   const [transcript, setTranscript] = useState([]);
@@ -124,8 +136,47 @@ export default function Conversation() {
             { role: "user", text },
           ]);
 
+          const cognitivePlan =
+            orchestrateCognition({
+              message: text,
+              memories,
+            });
+
+          const isVisionRequest =
+            cognitivePlan.route === "vision" &&
+            cognitivePlan.action === "observe";
+
           try {
-            const reply = await askLyssia(text);
+            let reply;
+
+            if (isVisionRequest) {
+              /*
+               * Vision déclenchée à voix haute -- même
+               * coeur que ChatPanel (performVisionRequest).
+               * La mémorisation se fait déjà à l'intérieur
+               * de captureAndAnalyze, pas besoin de
+               * rememberExchange ici.
+               */
+              reply = await performVisionRequest(
+                visionController,
+                text
+              );
+            } else {
+              const cognition =
+                analyzeMessage(text, memories);
+
+              const cognitiveContext =
+                prepareCognitiveContext({
+                  message: text,
+                  cognition,
+                  memories,
+                });
+
+              reply = await askLyssia(
+                text,
+                cognitiveContext
+              );
+            }
 
             if (!sessionActiveRef.current) return;
 
@@ -134,7 +185,9 @@ export default function Conversation() {
               { role: "lyssia", text: reply },
             ]);
 
-            rememberExchange(text, reply);
+            if (!isVisionRequest) {
+              rememberExchange(text, reply);
+            }
 
             transitionTo(PHASE.SPEAKING);
 

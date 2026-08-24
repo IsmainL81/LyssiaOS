@@ -20,11 +20,15 @@ const MEMORY_EXTRACT_URL =
 
 export async function askLyssia(
   message,
-  cognitiveContext = null
+  cognitiveContext = null,
+  attachment = null
 ) {
+  const trimmed =
+    message?.trim() || "";
+
   if (
-    !message ||
-    !message.trim()
+    !trimmed &&
+    !attachment
   ) {
     throw new Error(
       "Message vide."
@@ -42,9 +46,11 @@ export async function askLyssia(
 
       body: JSON.stringify({
       message:
-      message.trim(),
+      trimmed,
 
       cognitiveContext,
+
+      attachment,
     }),
     });
 

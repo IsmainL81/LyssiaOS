@@ -24,11 +24,68 @@ app.use(
   })
 );
 
-app.use(express.json({ limit: "10mb" }));
+app.use(express.json({ limit: "35mb" }));
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
+
+
+/**
+ * =====================================================
+ * PIÈCES JOINTES — CONSTRUCTION DE L'INPUT
+ * =====================================================
+ * Sans pièce jointe : la chaîne simple, comme avant.
+ * Avec pièce jointe : même schéma multimodal que
+ * /api/vision (input_image), plus input_file pour les
+ * documents -- format confirmé par la doc Responses API :
+ * { type: "input_file", filename, file_data: "data:...;base64,..." }
+ */
+
+function buildChatInput(
+  message,
+  attachment
+) {
+  if (!attachment?.data) {
+    return message;
+  }
+
+  const isImage =
+    attachment.data.startsWith(
+      "data:image/"
+    );
+
+  const fileBlock = isImage
+    ? {
+        type: "input_image",
+        image_url: attachment.data,
+        detail: "auto",
+      }
+    : {
+        type: "input_file",
+        filename:
+          attachment.filename ||
+          "document.pdf",
+        file_data: attachment.data,
+      };
+
+  return [
+    {
+      role: "user",
+
+      content: [
+        {
+          type: "input_text",
+          text:
+            message ||
+            "Voici un fichier.",
+        },
+
+        fileBlock,
+      ],
+    },
+  ];
+}
 
 
 /**
@@ -58,9 +115,13 @@ app.post("/api/chat", async (req, res) => {
   const {
     message,
     cognitiveContext,
+    attachment,
   } = req.body;
 
-  if (!message || !message.trim()) {
+  if (
+    (!message || !message.trim()) &&
+    !attachment
+  ) {
     return res.status(400).json({
       error: "Message vide.",
     });
@@ -130,12 +191,21 @@ const response = await openai.responses.create({
   instructions:
     cognitiveInstructions,
 
-  input: message,
+  input:
+    buildChatInput(message, attachment),
 
-  max_output_tokens: 400,
+  max_output_tokens:
+    attachment ? 800 : 400,
 
   reasoning: {
-    effort: "minimal",
+    /*
+     * Une pièce jointe (surtout un document) mérite
+     * plus de raisonnement qu'un échange texte simple --
+     * minimal reste adapté à la conversation courante,
+     * pas à la lecture d'un document.
+     */
+    effort:
+      attachment ? "low" : "minimal",
   },
 });
 
