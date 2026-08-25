@@ -287,7 +287,19 @@ app.post("/api/vision", async (req, res) => {
           },
         ],
 
-        max_output_tokens: 200,
+        max_output_tokens: 300,
+
+        reasoning: {
+          /*
+           * Sans ce réglage, l'effort par défaut ("medium")
+           * pouvait consommer tout le budget de tokens en
+           * raisonnement interne avant de produire le
+           * moindre texte visible -- réponse vide malgré
+           * une requête réussie. Décrire une scène est une
+           * tâche courte, "low" suffit largement.
+           */
+          effort: "low",
+        },
       });
 
     res.json({
