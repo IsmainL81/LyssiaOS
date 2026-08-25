@@ -509,16 +509,42 @@ useEffect(() => {
     recentLimit = 5,
     semanticLimit = 5,
   } = {}) {
-    return {
-      recentEpisodic:
-        getRecentMemories(recentLimit, {
-          category: "episodic",
-        }),
+    const recentEpisodic =
+      getRecentMemories(recentLimit, {
+        category: "episodic",
+      });
 
-      relevantSemantic:
-        searchMemories(query, {
+    /*
+     * Les faits sémantiques pertinents pour CE message
+     * d'abord (recherche par mots-clés) ; complète avec
+     * les plus récents pour ne jamais partir d'un
+     * contexte vide juste parce que le message du jour
+     * n'a aucun mot-clé en commun avec un fait établi.
+     */
+
+    const matchedSemantic = query
+      ? searchMemories(query, {
           category: "semantic",
-        }).slice(0, semanticLimit),
+        })
+      : [];
+
+    const otherSemantic = memories.filter(
+      (memory) =>
+        memory.category === "semantic" &&
+        !matchedSemantic.some(
+          (matched) =>
+            matched.id === memory.id
+        )
+    );
+
+    const relevantSemantic = [
+      ...matchedSemantic,
+      ...otherSemantic,
+    ].slice(0, semanticLimit);
+
+    return {
+      recentEpisodic,
+      relevantSemantic,
     };
   }
 

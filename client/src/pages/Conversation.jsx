@@ -88,7 +88,7 @@ const Conversation = forwardRef(function Conversation(
   { compact = false },
   ref
 ) {
-  const { rememberExchange, memories } = useLyssia();
+  const { rememberExchange, memories, buildWorkingContext } = useLyssia();
   const { visionController } = useVision();
 
   const [phase, setPhase] = useState(PHASE.IDLE);
@@ -244,6 +244,20 @@ const Conversation = forwardRef(function Conversation(
             cognition,
             memories,
           });
+
+          /*
+           * workingMemory est TOUJOURS calculé, contrairement à
+           * cognitiveContext.memories qui ne se remplit que si
+           * needsMemory est vrai (donc quasiment jamais en
+           * conversation normale). Les faits sémantiques sont
+           * une connaissance de fond, pas une réponse à une
+           * demande explicite de souvenir.
+           */
+
+          cognitiveContext.workingMemory =
+            buildWorkingContext({
+              query: userMessage,
+            });
 
           reply = await askLyssia(
             userMessage,
