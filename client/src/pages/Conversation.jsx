@@ -502,6 +502,66 @@ const Conversation = forwardRef(function Conversation(
     };
   }, []);
 
+  /*
+   * =====================================================
+   * DÉMARRAGE AUTOMATIQUE SI PERMISSION DÉJÀ ACCORDÉE
+   * =====================================================
+   * Un navigateur exige un geste utilisateur pour LA
+   * TOUTE PREMIÈRE autorisation micro -- incontournable,
+   * ce n'est pas un choix de Lyssia OS. Mais une fois
+   * cette autorisation accordée pour cette origine, la
+   * réactiver n'en a plus besoin. On vérifie l'état réel
+   * via la Permissions API (lecture seule, ne déclenche
+   * jamais de prompt) et on ne démarre que si elle est
+   * déjà "granted".
+   *
+   * Différent de la tentative du matin : ici la relance
+   * est unique, conditionnée à la permission, et repose
+   * sur runListeningCycle -- déjà à l'épreuve du
+   * redémarrage propre (un seul relais par coupure
+   * naturelle, jamais de relances empilées).
+   */
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function tryAutoStart() {
+      if (!supported || sessionActiveRef.current) return;
+
+      if (!navigator.permissions?.query) {
+        return;
+      }
+
+      try {
+        const status = await navigator.permissions.query({
+          name: "microphone",
+        });
+
+        if (
+          !cancelled &&
+          status.state === "granted" &&
+          !sessionActiveRef.current
+        ) {
+          sessionActiveRef.current = true;
+          setErrorMsg(null);
+          runListeningCycle();
+        }
+      } catch {
+        /*
+         * Permissions API indisponible pour 'microphone'
+         * (Firefox notamment) -- on ne prend aucun risque,
+         * le bouton micro reste le point de départ manuel.
+         */
+      }
+    }
+
+    tryAutoStart();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [supported, runListeningCycle]);
+
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
