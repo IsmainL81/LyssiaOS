@@ -578,7 +578,8 @@ export function createListeningSession(
 
   recognition.maxAlternatives = 1;
 
-  let finalText = "";
+  let processedResultCount = 0;
+  let lastFinalText = "";
   let stopped = false;
 
   recognition.onstart = () => {
@@ -590,8 +591,18 @@ export function createListeningSession(
   recognition.onresult = (event) => {
     let interimText = "";
 
+    /*
+     * On parcourt TOUS les résultats depuis 0, sans faire
+     * confiance à event.resultIndex : rien ne garantit
+     * qu'il exclue systématiquement les résultats déjà
+     * traités. La protection réelle est processedResultCount,
+     * pisté nous-mêmes -- un résultat final n'est envoyé
+     * qu'une seule fois, jamais réaccumulé, même si le
+     * navigateur le re-présente dans un événement ultérieur.
+     */
+
     for (
-      let index = event.resultIndex;
+      let index = 0;
       index < event.results.length;
       index += 1
     ) {
@@ -613,7 +624,24 @@ export function createListeningSession(
       }
 
       if (result.isFinal) {
-        finalText += `${transcript} `;
+        if (
+          index >= processedResultCount &&
+          transcript.trim() &&
+          onFinalResult
+        ) {
+          lastFinalText =
+            transcript.trim();
+
+          onFinalResult(
+            transcript.trim()
+          );
+        }
+
+        processedResultCount =
+          Math.max(
+            processedResultCount,
+            index + 1
+          );
       } else {
         interimText += transcript;
       }
@@ -627,28 +655,6 @@ export function createListeningSession(
         interimText.trim()
       );
     }
-
-    if (
-      finalText.trim() &&
-      onFinalResult
-    ) {
-      const textToSend =
-        finalText.trim();
-
-      /*
-       * Reset immédiat -- indispensable en continuous:true.
-       * La session reste active pour toute la conversation
-       * (barge-in compris), donc sans ce reset, finalText
-       * ne redevient jamais vide : chaque futur onresult
-       * soit renvoie ce même texte (doublons), soit lui
-       * accroche le suivant (concaténation, double espace).
-       */
-      finalText = "";
-
-      onFinalResult(
-        textToSend
-      );
-    }
   };
 
   recognition.onerror = (event) => {
@@ -660,7 +666,7 @@ export function createListeningSession(
   recognition.onend = () => {
     if (onEnd) {
       onEnd({
-        text: finalText.trim(),
+        text: lastFinalText,
         stopped,
       });
     }
