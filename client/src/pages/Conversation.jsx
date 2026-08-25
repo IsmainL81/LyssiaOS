@@ -387,8 +387,21 @@ const Conversation = forwardRef(function Conversation(
           setLiveText(text);
         },
 
-        onSpeechActivity: () => {
-          if (phaseRef.current === PHASE.SPEAKING) {
+        onSpeechActivity: (transcript) => {
+          /*
+           * Seuil minimal avant de considérer qu'il s'agit
+           * d'une vraie interruption -- un fragment très
+           * court est plus probablement du bruit, ou Lyssia
+           * qui s'entend elle-même via les haut-parleurs,
+           * qu'une intention réelle de couper la parole.
+           * N'importe quel mot d'interruption réel ("stop",
+           * "non", "attends") franchit largement ce seuil.
+           */
+          if (
+            phaseRef.current === PHASE.SPEAKING &&
+            transcript &&
+            transcript.trim().length >= 4
+          ) {
             stopSpeaking();
             transitionTo(PHASE.LISTENING);
           }
