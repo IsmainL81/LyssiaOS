@@ -106,6 +106,7 @@ const Conversation = forwardRef(function Conversation(
   const sessionActiveRef = useRef(false);
   const phaseRef = useRef(PHASE.IDLE);
   const recognitionRef = useRef(null);
+  const speechStartedAtRef = useRef(0);
   const scrollRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -283,6 +284,10 @@ const Conversation = forwardRef(function Conversation(
           transitionTo(PHASE.SPEAKING);
 
           speak(reply, {
+            onStart: () => {
+              speechStartedAtRef.current =
+                Date.now();
+            },
             onEnd: () => {
               if (sessionActiveRef.current) {
                 transitionTo(PHASE.LISTENING);
@@ -389,19 +394,42 @@ const Conversation = forwardRef(function Conversation(
 
         onSpeechActivity: (transcript) => {
           /*
-           * Seuil minimal avant de considérer qu'il s'agit
-           * d'une vraie interruption -- un fragment très
-           * court est plus probablement du bruit, ou Lyssia
-           * qui s'entend elle-même via les haut-parleurs,
-           * qu'une intention réelle de couper la parole.
-           * N'importe quel mot d'interruption réel ("stop",
-           * "non", "attends") franchit largement ce seuil.
+           * Deux protections contre les fausses interruptions
+           * (Lyssia qui s'entend elle-même via les
+           * haut-parleurs, plus probable juste au moment où
+           * elle commence à parler) :
+           *
+           * - Délai de grâce de 700ms depuis le vrai début de
+           *   parole (onstart du moteur, pas l'appel de la
+           *   fonction) : le risque d'auto-écho est maximal
+           *   dans l'instant qui suit le déclenchement.
+           * - Seuil de longueur relevé (4 -> 7) : un fragment
+           *   très court reste plus probablement du bruit
+           *   qu'une intention réelle. N'importe quel mot
+           *   d'interruption ("attends", "silence", "stop là")
+           *   franchit largement ce seuil.
+           *
+           * Log volontairement conservé : si la coupure se
+           * reproduit malgré ça, le texte capté ici dira si
+           * c'est un auto-écho (proche de ce qu'elle disait)
+           * ou autre chose.
            */
+          const elapsedSinceStart =
+            Date.now() -
+            speechStartedAtRef.current;
+
           if (
             phaseRef.current === PHASE.SPEAKING &&
             transcript &&
-            transcript.trim().length >= 4
+            transcript.trim().length >= 7 &&
+            elapsedSinceStart > 700
           ) {
+            console.warn(
+              "Barge-in déclenché -- texte capté :",
+              transcript,
+              `(${elapsedSinceStart}ms après le début de la phrase)`
+            );
+
             stopSpeaking();
             transitionTo(PHASE.LISTENING);
           }
