@@ -43,7 +43,6 @@ import {
   isVoiceSupported,
   isListeningSupported,
   createListeningSession,
-  startListening,
   stopListening,
   speak,
   stopSpeaking,
@@ -411,7 +410,7 @@ const Conversation = forwardRef(function Conversation(
       });
 
       recognitionRef.current = session;
-      startListening(session);
+      session.start();
     } catch (err) {
       setErrorMsg(err.message);
       sessionActiveRef.current = false;
@@ -488,24 +487,25 @@ const Conversation = forwardRef(function Conversation(
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
-              pt: 4,
-              pb: 2,
+              flexShrink: 0,
+              pt: 2,
+              pb: 1,
             }}
           >
             <Box
               sx={{
                 position: "relative",
-                width: 120,
-                height: 120,
+                width: 72,
+                height: 72,
                 borderRadius: "50%",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                mb: 2,
+                mb: 1,
                 border: `2px solid ${meta.color}88`,
                 boxShadow:
                   phase !== PHASE.IDLE
-                    ? `0 0 32px 5px ${meta.color}44`
+                    ? `0 0 20px 4px ${meta.color}44`
                     : "none",
                 transition: "border-color 400ms ease, box-shadow 400ms ease",
                 "@keyframes convPulse": {
@@ -520,17 +520,18 @@ const Conversation = forwardRef(function Conversation(
             >
               {phase === PHASE.THINKING ? (
                 <GraphicEqIcon
-                  sx={{ fontSize: 40, color: meta.color, opacity: 0.85 }}
+                  sx={{ fontSize: 26, color: meta.color, opacity: 0.85 }}
                 />
               ) : (
                 <MicIcon
-                  sx={{ fontSize: 40, color: meta.color, opacity: 0.85 }}
+                  sx={{ fontSize: 26, color: meta.color, opacity: 0.85 }}
                 />
               )}
             </Box>
 
             <Chip
               label={meta.label}
+              size="small"
               sx={{
                 bgcolor: `${meta.color}22`,
                 color: meta.color,
@@ -545,7 +546,9 @@ const Conversation = forwardRef(function Conversation(
                 sx={{
                   color: "rgba(242,239,233,0.6)",
                   fontStyle: "italic",
-                  mt: 1.5,
+                  mt: 1,
+                  px: 2,
+                  textAlign: "center",
                 }}
               >
                 « {liveText} »
@@ -555,7 +558,7 @@ const Conversation = forwardRef(function Conversation(
             {errorMsg && (
               <Typography
                 variant="body2"
-                sx={{ color: "#e2685f", mt: 1 }}
+                sx={{ color: "#e2685f", mt: 1, px: 2, textAlign: "center" }}
               >
                 {errorMsg}
               </Typography>
@@ -573,6 +576,7 @@ const Conversation = forwardRef(function Conversation(
           ref={scrollRef}
           sx={{
             flex: 1,
+            minHeight: 0,
             overflowY: "auto",
             px: 3,
             pb: 2,
@@ -676,6 +680,7 @@ const Conversation = forwardRef(function Conversation(
           display: "flex",
           alignItems: "center",
           gap: 0.5,
+          flexShrink: 0,
           px: compact ? 1 : 3,
           py: compact ? 1 : 2,
         }}
