@@ -335,6 +335,9 @@ function prepareCognitiveContext({
       analysis.needsMemory,
     needsVision:
       analysis.needsVision,
+    possibleRepetition:
+      analysis.possibleRepetition ||
+      false,
 
     memories:
       relevantMemories.map(
@@ -354,6 +357,57 @@ function prepareCognitiveContext({
 }
 
 
+
+/**
+ * ============================================================
+ * DÉTECTION DE RÉPÉTITION
+ * ============================================================
+ * Signal calculable, pas seulement espéré du modèle : si le
+ * message actuel recoupe fortement un échange très récent,
+ * c'est probablement qu'Ismain reformule -- signe que la
+ * réponse précédente n'a pas répondu à ce qu'il attendait.
+ */
+
+function detectRepetition(
+  text,
+  memories = [],
+  { withinCount = 3 } = {}
+) {
+  const currentTokens =
+    new Set(tokenize(text));
+
+  if (currentTokens.size === 0) {
+    return false;
+  }
+
+  const recentConversations =
+    memories
+      .filter(
+        (memory) =>
+          memory.type === "conversation"
+      )
+      .slice(0, withinCount);
+
+  return recentConversations.some(
+    (memory) => {
+      const memoryTokens =
+        tokenize(memory.content);
+
+      const overlap =
+        memoryTokens.filter((token) =>
+          currentTokens.has(token)
+        );
+
+      return (
+        overlap.length >=
+        Math.min(
+          3,
+          currentTokens.size
+        )
+      );
+    }
+  );
+}
 
 /**
  * ============================================================
@@ -388,6 +442,12 @@ function analyzeMessage(
         })
       : [];
 
+  const possibleRepetition =
+    detectRepetition(
+      text,
+      memories
+    );
+
   return {
     input: String(text),
 
@@ -398,6 +458,8 @@ function analyzeMessage(
     needsMemory,
 
     needsVision,
+
+    possibleRepetition,
 
     priority:
       detectPriority(intent),
@@ -413,6 +475,8 @@ function analyzeMessage(
       needsMemory,
 
       needsVision,
+
+      possibleRepetition,
 
       relevantMemories,
     },
@@ -431,6 +495,7 @@ export {
   detectPriority,
   scoreMemory,
   selectRelevantMemories,
+  detectRepetition,
   prepareCognitiveContext,
   analyzeMessage,
 };
@@ -444,6 +509,7 @@ export default {
   detectPriority,
   scoreMemory,
   selectRelevantMemories,
+  detectRepetition,
   prepareCognitiveContext,
   analyzeMessage,
 };
