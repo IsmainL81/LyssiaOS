@@ -632,8 +632,21 @@ export function createListeningSession(
       finalText.trim() &&
       onFinalResult
     ) {
+      const textToSend =
+        finalText.trim();
+
+      /*
+       * Reset immédiat -- indispensable en continuous:true.
+       * La session reste active pour toute la conversation
+       * (barge-in compris), donc sans ce reset, finalText
+       * ne redevient jamais vide : chaque futur onresult
+       * soit renvoie ce même texte (doublons), soit lui
+       * accroche le suivant (concaténation, double espace).
+       */
+      finalText = "";
+
       onFinalResult(
-        finalText.trim()
+        textToSend
       );
     }
   };
