@@ -7,22 +7,31 @@ function LyssiaModel() {
   return (
     <primitive
       object={scene}
-      scale={1.4}
-      position={[0, -1.2, 0]}
+      position={[0, 0, 0]}
     />
   );
 }
 
 export default function Avatar3D() {
   return (
-    <Canvas camera={{ position: [0, 1.5, 3] }}>
-      <ambientLight intensity={2} />
-      <directionalLight position={[5, 5, 5]} intensity={2} />
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        minHeight: "calc(100vh - 64px)",
+        background:
+          "radial-gradient(circle at 50% 30%, #172b43 0%, #0b1220 70%)",
+      }}
+    >
+      <Canvas camera={{ position: [0, 1.5, 3] }}>
+        <ambientLight intensity={2} />
+        <directionalLight position={[5, 5, 5]} intensity={2} />
 
-      <LyssiaModel />
+        <LyssiaModel />
 
-      <OrbitControls />
-    </Canvas>
+        <OrbitControls />
+      </Canvas>
+    </div>
   );
 }
 

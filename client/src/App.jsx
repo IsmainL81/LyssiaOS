@@ -9,6 +9,7 @@ import Dashboard from "./pages/Dashboard";
 import Vision from "./pages/Vision";
 import Memory from "./pages/Memory";
 import Conversation from "./pages/Conversation";
+import Avatar3D from "./components/Avatar3D";
 
 import {
   VisionProvider,
@@ -45,6 +46,10 @@ export default function App() {
   let page;
 
   switch (path) {
+    case "/avatar-3d":
+      page = <Avatar3D />;
+      break;
+
     case "/conversation":
       page = <Conversation />;
       break;
