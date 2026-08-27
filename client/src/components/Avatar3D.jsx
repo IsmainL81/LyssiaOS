@@ -8,6 +8,7 @@ function LyssiaModel() {
     <primitive
       object={scene}
       position={[0, 0, 0]}
+      scale={15.86}
     />
   );
 }
