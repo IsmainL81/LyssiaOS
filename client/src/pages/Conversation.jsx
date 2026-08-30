@@ -48,6 +48,13 @@ import {
   stopSpeaking,
 } from "../features/voice/VoiceEngine";
 
+import {
+  avatarIdle,
+  avatarListening,
+  avatarThinking,
+  avatarSpeaking,
+} from "../components/AvatarSystem.js";
+
 /**
  * =====================================================
  * PAGE CONVERSATION -- UNIFIÉE
@@ -116,6 +123,27 @@ const Conversation = forwardRef(function Conversation(
   function transitionTo(newPhase) {
     phaseRef.current = newPhase;
     setPhase(newPhase);
+
+    switch (newPhase) {
+      case PHASE.IDLE:
+        avatarIdle();
+        break;
+
+      case PHASE.LISTENING:
+        avatarListening();
+        break;
+
+      case PHASE.THINKING:
+        avatarThinking();
+        break;
+
+      case PHASE.SPEAKING:
+        avatarSpeaking();
+        break;
+
+      default:
+        break;
+    }
   }
 
   /*
@@ -446,22 +474,23 @@ const Conversation = forwardRef(function Conversation(
         },
 
         onEnd: () => {
-          recognitionRef.current = null;
+            recognitionRef.current = null;
 
-          if (sessionActiveRef.current) {
-            runListeningCycle();
-          }
-        },
+            if (sessionActiveRef.current) {
+              sessionActiveRef.current = false;
+              setLiveText("");
+              transitionTo(PHASE.IDLE);
+            }
+          },
 
         onError: (err) => {
-          console.warn("Reconnaissance vocale — erreur :", err);
+            console.warn("Reconnaissance vocale - erreur :", err);
 
-          recognitionRef.current = null;
-
-          if (sessionActiveRef.current) {
-            runListeningCycle();
-          }
-        },
+            recognitionRef.current = null;
+            sessionActiveRef.current = false;
+            setLiveText("");
+            transitionTo(PHASE.IDLE);
+          },
       });
 
       recognitionRef.current = session;
