@@ -1,0 +1,713 @@
+/* ============================================================
+   LYSSIA AVATAR
+============================================================ */
+
+.lyssia-avatar {
+
+  position: relative;
+
+  width: 100%;
+
+  max-width: 600px;
+
+  overflow: hidden;
+
+  transform-origin:
+    center center;
+
+}
+
+
+/* ============================================================
+   IMAGE PRINCIPALE
+============================================================ */
+
+.lyssia-avatar-image {
+
+  display: block;
+
+  width: 100%;
+
+  height: auto;
+
+  user-select: none;
+
+  pointer-events: none;
+
+}
+
+
+/* ============================================================
+   IDLE
+============================================================ */
+
+.lyssia-state-idle {
+
+  animation:
+    lyssia-idle
+    6s
+    ease-in-out
+    infinite;
+
+}
+
+
+@keyframes lyssia-idle {
+
+  0% {
+
+    transform:
+      translateY(0)
+      rotate(0deg);
+
+  }
+
+  25% {
+
+    transform:
+      translateY(-1px)
+      rotate(0.15deg);
+
+  }
+
+  50% {
+
+    transform:
+      translateY(-2px)
+      rotate(-0.15deg);
+
+  }
+
+  75% {
+
+    transform:
+      translateY(-1px)
+      rotate(0.1deg);
+
+  }
+
+  100% {
+
+    transform:
+      translateY(0)
+      rotate(0deg);
+
+  }
+
+}
+
+
+/* ============================================================
+   LISTENING
+============================================================ */
+
+.lyssia-state-listening {
+
+  animation:
+    lyssia-listening
+    2.5s
+    ease-in-out
+    infinite;
+
+}
+
+
+@keyframes lyssia-listening {
+
+  0% {
+
+    transform:
+      rotate(0deg);
+
+  }
+
+  50% {
+
+    transform:
+      rotate(-0.8deg)
+      translateY(-1px);
+
+  }
+
+  100% {
+
+    transform:
+      rotate(0deg);
+
+  }
+
+}
+
+
+/* ============================================================
+   THINKING
+============================================================ */
+
+.lyssia-state-thinking {
+
+  animation:
+    lyssia-thinking
+    3s
+    ease-in-out
+    infinite;
+
+}
+
+
+@keyframes lyssia-thinking {
+
+  0% {
+
+    transform:
+      translateY(0)
+      rotate(0deg);
+
+  }
+
+  50% {
+
+    transform:
+      translateY(-3px)
+      rotate(0.5deg);
+
+  }
+
+  100% {
+
+    transform:
+      translateY(0)
+      rotate(0deg);
+
+  }
+
+}
+
+
+/* ============================================================
+   SPEAKING
+============================================================ */
+
+.lyssia-state-speaking {
+
+  animation:
+    lyssia-speaking-motion
+    1.8s
+    ease-in-out
+    infinite;
+
+}
+
+
+@keyframes lyssia-speaking-motion {
+
+  0% {
+
+    transform:
+      translateY(0)
+      rotate(0deg);
+
+  }
+
+  50% {
+
+    transform:
+      translateY(-1px)
+      rotate(0.35deg);
+
+  }
+
+  100% {
+
+    transform:
+      translateY(0)
+      rotate(0deg);
+
+  }
+
+}
+
+
+/* ============================================================
+   YEUX
+============================================================ */
+
+.lyssia-eyes {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+
+/* ============================================================
+   ZONES DES YEUX
+============================================================ */
+
+.lyssia-eye {
+  position: absolute;
+
+  width: 15%;
+  height: 15%;
+
+  border-radius: 50%;
+
+  background:
+    rgba(5, 10, 20, 0);
+
+  transform-origin: center center;
+
+  pointer-events: none;
+}
+
+
+/* ============================================================
+   Å’IL GAUCHE
+============================================================ */
+
+.lyssia-eye-left {
+  left: 32%;
+  top: 27.5%;
+}
+
+
+/* ============================================================
+   Å’IL DROIT
+============================================================ */
+
+.lyssia-eye-right {
+  right: 32%;
+  top: 27.5%;
+}
+
+
+/* ============================================================
+   CLIGNEMENT
+============================================================ */
+
+.lyssia-animation-blink
+.lyssia-eye {
+
+  animation:
+    lyssia-eye-blink
+    0.22s
+    ease-in-out
+    both;
+
+}
+
+
+@keyframes lyssia-eye-blink {
+
+  0% {
+    transform:
+      scaleY(1);
+
+    background:
+      rgba(5, 10, 20, 0);
+  }
+
+  35% {
+    transform:
+      scaleY(0.12);
+
+    background:
+      rgba(8, 15, 25, 0.55);
+  }
+
+  55% {
+    transform:
+      scaleY(0.05);
+
+    background:
+      rgba(8, 15, 25, 0.75);
+  }
+
+  100% {
+    transform:
+      scaleY(1);
+
+    background:
+      rgba(5, 10, 20, 0);
+  }
+
+}
+
+
+/* ============================================================
+   MOUVEMENT DE TÃŠTE
+============================================================ */
+
+.lyssia-animation-head_move {
+
+  animation:
+    lyssia-head-move
+    700ms
+    ease-in-out
+    both;
+
+}
+
+
+@keyframes lyssia-head-move {
+
+  0% {
+
+    transform:
+      rotate(0deg)
+      translateX(0);
+
+  }
+
+  50% {
+
+    transform:
+      rotate(0.7deg)
+      translateX(2px);
+
+  }
+
+  100% {
+
+    transform:
+      rotate(0deg)
+      translateX(0);
+
+  }
+
+}
+
+
+/* ============================================================
+   BOUCHE
+============================================================ */
+
+.lyssia-mouth-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+}
+
+
+.lyssia-mouth {
+  position: absolute;
+
+  left: 49%;
+  top: 52%;
+
+  width: 13%;
+  height: 6%;
+
+  transform:
+    translateX(-50%)
+    scaleY(0.8);
+
+  transform-origin: center center;
+
+  border-radius: 50%;
+
+  pointer-events: none;
+
+  opacity: 0;
+
+  background:
+    rgba(
+      35,
+      10,
+      14,
+      0.65
+    );
+}
+
+
+/* ============================================================
+   PAROLE
+============================================================ */
+
+.lyssia-avatar.lyssia-speaking
+.lyssia-mouth {
+
+  opacity: 1;
+
+  animation:
+    lyssia-mouth-animation
+    0.22s
+    ease-in-out
+    infinite;
+
+}
+
+
+@keyframes lyssia-mouth-animation {
+
+  0% {
+    transform:
+      translateX(-50%)
+      scaleY(0.85);
+  }
+
+  50% {
+    transform:
+      translateX(-50%)
+      scaleY(1.35);
+  }
+
+  100% {
+    transform:
+      translateX(-50%)
+      scaleY(0.85);
+  }
+
+}
+
+
+/* ============================================================
+   HALO CYBERNÃ‰TIQUE
+============================================================ */
+
+.lyssia-cyber-glow {
+
+  position: absolute;
+
+  inset: 0;
+
+  pointer-events: none;
+
+  opacity: 0;
+
+  background:
+
+    radial-gradient(
+
+      circle at 50% 72%,
+
+      rgba(
+        0,
+        180,
+        255,
+        0.25
+      ),
+
+      transparent 45%
+
+    );
+
+  transition:
+    opacity
+    400ms
+    ease;
+
+}
+
+
+/* ============================================================
+   THINKING
+============================================================ */
+
+.lyssia-state-thinking
+.lyssia-cyber-glow {
+
+  opacity:
+    0.45;
+
+}
+
+
+/* ============================================================
+   SPEAKING
+============================================================ */
+
+.lyssia-state-speaking
+.lyssia-cyber-glow {
+
+  opacity:
+    0.65;
+
+  animation:
+    lyssia-cyber-pulse
+    1.2s
+    ease-in-out
+    infinite;
+
+}
+
+
+@keyframes lyssia-cyber-pulse {
+
+  0% {
+
+    opacity:
+      0.30;
+
+  }
+
+  50% {
+
+    opacity:
+      0.85;
+
+  }
+
+  100% {
+
+    opacity:
+      0.30;
+
+  }
+
+}
+
+
+/* ============================================================
+   INDICATEUR D'Ã‰TAT
+============================================================ */
+
+.lyssia-status {
+
+  position: absolute;
+
+  bottom: 20px;
+
+  left: 20px;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 8px;
+
+  padding:
+    8px 12px;
+
+  border-radius:
+    10px;
+
+  background:
+
+    rgba(
+      5,
+      10,
+      20,
+      0.65
+    );
+
+  backdrop-filter:
+    blur(10px);
+
+  color:
+    white;
+
+  font-family:
+    Arial,
+    sans-serif;
+
+  font-size:
+    12px;
+
+  letter-spacing:
+    1px;
+
+  text-transform:
+    uppercase;
+
+}
+
+
+/* ============================================================
+   POINT DE STATUT
+============================================================ */
+
+.lyssia-status-dot {
+
+  width:
+    8px;
+
+  height:
+    8px;
+
+  border-radius:
+    50%;
+
+  background:
+    #00c8ff;
+
+  box-shadow:
+
+    0 0 10px
+    rgba(
+      0,
+      200,
+      255,
+      0.8
+    );
+
+  animation:
+    lyssia-status-pulse
+    2s
+    ease-in-out
+    infinite;
+
+}
+
+
+@keyframes lyssia-status-pulse {
+
+  0% {
+
+    transform:
+      scale(1);
+
+    opacity:
+      0.6;
+
+  }
+
+  50% {
+
+    transform:
+      scale(1.25);
+
+    opacity:
+      1;
+
+  }
+
+  100% {
+
+    transform:
+      scale(1);
+
+    opacity:
+      0.6;
+
+  }
+
+}
+
+
+/* ============================================================
+   ACCESSIBILITÃ‰
+============================================================ */
+
+@media (
+  prefers-reduced-motion: reduce
+) {
+
+  .lyssia-avatar,
+  .lyssia-avatar *,
+  .lyssia-avatar *::before,
+  .lyssia-avatar *::after {
+
+    animation-duration:
+      0.01ms !important;
+
+    animation-iteration-count:
+      1 !important;
+
+    transition-duration:
+      0.01ms !important;
+
+  }
+
+}
