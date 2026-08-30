@@ -10,6 +10,7 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import OpenAI from "openai";
+import multer from "multer";
 
 const app = express();
 
@@ -25,6 +26,12 @@ app.use(
 );
 
 app.use(express.json({ limit: "35mb" }));
+
+const upload = multer({
+  limits: {
+    fileSize: 25 * 1024 * 1024,
+  },
+});
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -437,6 +444,45 @@ contexte de l'échange).
  * =====================================================
  */
 
+/**
+ * =====================================================
+ * TRANSCRIPTION VOCALE
+ * =====================================================
+ */
+
+app.post(
+  "/api/voice/transcribe",
+  upload.single("audio"),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({
+          error: "Aucun fichier audio reçu.",
+        });
+      }
+
+      const transcription =
+        await openai.audio.transcriptions.create({
+          file: req.file.buffer,
+          model: "gpt-4o-mini-transcribe",
+          language: "fr",
+        });
+
+      res.json({
+        text: transcription.text || "",
+      });
+    } catch (error) {
+      console.error(
+        "Erreur transcription vocale :",
+        error
+      );
+
+      res.status(500).json({
+        error: "Impossible de transcrire l'audio.",
+      });
+    }
+  }
+);
 app.listen(PORT, () => {
   console.log(
     `Lyssia Backend démarré sur http://localhost:${PORT}`
