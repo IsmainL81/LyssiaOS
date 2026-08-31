@@ -29,6 +29,7 @@ import { askLyssia } from "../features/ai/AIEngine";
 import { useLyssia } from "../core/LyssiaCore";
 import { useVision } from "../features/vision/VisionContext";
 import { performVisionRequest } from "../features/vision/visionRequest";
+import { VoiceInputController } from "../features/voice/VoiceInputController";
 
 import {
   analyzeMessage,
@@ -114,6 +115,68 @@ const Conversation = forwardRef(function Conversation(
   const phaseRef = useRef(PHASE.IDLE);
   const recognitionRef = useRef(null);
   const speechStartedAtRef = useRef(0);
+  const sttControllerRef = useRef(null);
+
+  /*
+   * =====================================================
+   * SEGMENT AUDIO WHISPER (précision), en parallèle de la
+   * reconnaissance temps réel du navigateur (fluidité)
+   * =====================================================
+   * Un segment = l'audio brut entre deux résultats finaux
+   * de la reconnaissance continue. Démarré au même moment
+   * que chaque cycle d'écoute, arrêté et transcrit dès
+   * qu'un résultat final navigateur signale la fin d'une
+   * phrase -- le texte Whisper remplace alors le texte du
+   * navigateur, qui ne sert plus que de détecteur de fin
+   * de phrase.
+   */
+
+  function startSTTSegment() {
+    if (!sessionActiveRef.current) return;
+
+    const controller = new VoiceInputController({
+      onError: (err) => {
+        console.warn(
+          "Enregistrement Whisper — erreur :",
+          err
+        );
+      },
+    });
+
+    sttControllerRef.current = controller;
+
+    controller.start().catch((err) => {
+      console.warn(
+        "Impossible de démarrer l'enregistrement Whisper :",
+        err
+      );
+    });
+  }
+
+  async function finishSTTSegment() {
+    const controller = sttControllerRef.current;
+
+    if (!controller) return null;
+
+    sttControllerRef.current = null;
+
+    /*
+     * Démarre le segment suivant immédiatement, sans
+     * attendre la fin de la transcription -- l'écoute ne
+     * doit jamais s'interrompre en attendant Whisper.
+     */
+    startSTTSegment();
+
+    try {
+      return await controller.stop();
+    } catch (err) {
+      console.warn(
+        "Transcription Whisper impossible :",
+        err
+      );
+      return null;
+    }
+  }
   const scrollRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -470,7 +533,24 @@ const Conversation = forwardRef(function Conversation(
           if (!sessionActiveRef.current) return;
           if (phaseRef.current === PHASE.THINKING) return;
 
-          await handleUtterance(text, null);
+          /*
+           * Le texte du navigateur ne sert qu'à détecter
+           * la fin de la phrase. Le texte réellement
+           * envoyé vient de Whisper (segment audio en
+           * parallèle) -- avec repli sur le texte
+           * navigateur si Whisper échoue ou revient vide,
+           * pour ne jamais perdre la phrase.
+           */
+
+          const whisperText =
+            await finishSTTSegment();
+
+          const finalText =
+            whisperText && whisperText.trim()
+              ? whisperText.trim()
+              : text;
+
+          await handleUtterance(finalText, null);
         },
 
         onEnd: () => {
@@ -495,6 +575,10 @@ const Conversation = forwardRef(function Conversation(
 
       recognitionRef.current = session;
       session.start();
+
+      if (!sttControllerRef.current) {
+        startSTTSegment();
+      }
     } catch (err) {
       setErrorMsg(err.message);
       sessionActiveRef.current = false;
@@ -512,6 +596,11 @@ const Conversation = forwardRef(function Conversation(
         recognitionRef.current = null;
       }
 
+      if (sttControllerRef.current) {
+        sttControllerRef.current.cancel();
+        sttControllerRef.current = null;
+      }
+
       setLiveText("");
       transitionTo(PHASE.IDLE);
     } else {
@@ -527,6 +616,9 @@ const Conversation = forwardRef(function Conversation(
       stopSpeaking();
       if (recognitionRef.current) {
         stopListening(recognitionRef.current);
+      }
+      if (sttControllerRef.current) {
+        sttControllerRef.current.cancel();
       }
     };
   }, []);
