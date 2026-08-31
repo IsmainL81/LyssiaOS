@@ -124,6 +124,35 @@ useEffect(() => {
 
   /*
    * =====================================================
+   * ÉTAT COGNITIF
+   * =====================================================
+   */
+
+  const [
+    cognitiveState,
+    setCognitiveState,
+  ] = useState(null);
+
+  const [
+    cognitiveHistory,
+    setCognitiveHistory,
+  ] = useState([]);
+
+  function updateCognitiveState({
+    state = null,
+    history = null,
+  } = {}) {
+    if (state) {
+      setCognitiveState(state);
+    }
+
+    if (Array.isArray(history)) {
+      setCognitiveHistory(history);
+    }
+  }
+
+  /*
+   * =====================================================
    * SAUVEGARDE AUTOMATIQUE
    * =====================================================
    */
@@ -658,6 +687,16 @@ useEffect(() => {
       visionEvents,
 
       addVisionEvent,
+
+      /*
+       * État cognitif
+       */
+
+      cognitiveState,
+
+      cognitiveHistory,
+
+      updateCognitiveState,
     }),
     [
       systemState,
@@ -665,6 +704,8 @@ useEffect(() => {
       statusMessage,
       memories,
       visionEvents,
+      cognitiveState,
+      cognitiveHistory,
     ]
   );
 
