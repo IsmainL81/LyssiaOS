@@ -10,6 +10,7 @@ import Vision from "./pages/Vision";
 import Memory from "./pages/Memory";
 import Conversation from "./pages/Conversation";
 import Avatar3D from "./components/Avatar3D";
+import TestSTT from "./pages/TestSTT";
 
 import {
   VisionProvider,
@@ -46,6 +47,10 @@ export default function App() {
   let page;
 
   switch (path) {
+    case "/test-stt":
+      page = <TestSTT />;
+      break;
+
     case "/avatar-3d":
       page = <Avatar3D />;
       break;
