@@ -26,6 +26,9 @@ import CloseIcon from "@mui/icons-material/Close";
 import DescriptionIcon from "@mui/icons-material/Description";
 
 import { askLyssia } from "../features/ai/AIEngine";
+import {
+  evaluateCognitiveInteraction,
+} from "../core/CognitiveRuntimeEngine";
 import { useLyssia } from "../core/LyssiaCore";
 import { useVision } from "../features/vision/VisionContext";
 import { performVisionRequest } from "../features/vision/visionRequest";
@@ -97,7 +100,13 @@ const Conversation = forwardRef(function Conversation(
   { compact = false },
   ref
 ) {
-  const { rememberExchange, memories, buildWorkingContext } = useLyssia();
+  const {
+    rememberExchange,
+    memories,
+    buildWorkingContext,
+    cognitiveHistory,
+    updateCognitiveState,
+  } = useLyssia();
   const { visionController } = useVision();
 
   const [phase, setPhase] = useState(PHASE.IDLE);
@@ -357,6 +366,35 @@ const Conversation = forwardRef(function Conversation(
             cognitiveContext,
             attachmentToSend
           );
+
+          const cognitiveRuntime =
+            evaluateCognitiveInteraction({
+              message: userMessage,
+              reply,
+              cognitivePlan,
+              cognition,
+              workingMemory:
+                cognitiveContext.workingMemory,
+              memories,
+              capabilities: {
+                chat: true,
+                vision: true,
+                memory: true,
+                audio: true,
+                actions: false,
+              },
+              history:
+                cognitiveHistory,
+            });
+
+          updateCognitiveState({
+            state:
+              cognitiveRuntime.state,
+            history:
+              cognitiveRuntime.history,
+          });
+
+
         }
 
         if (!reply || !reply.trim()) {
@@ -409,7 +447,13 @@ const Conversation = forwardRef(function Conversation(
         );
       }
     },
-    [memories, visionController, rememberExchange]
+    [
+      memories,
+      visionController,
+      rememberExchange,
+      cognitiveHistory,
+      updateCognitiveState,
+    ]
   );
 
   /*
