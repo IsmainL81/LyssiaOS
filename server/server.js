@@ -9,7 +9,7 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
-import OpenAI from "openai";
+import OpenAI, { toFile } from "openai";
 import multer from "multer";
 
 const app = express();
@@ -461,9 +461,27 @@ app.post(
         });
       }
 
+      console.log("🎙️ Fichier audio reçu :", {
+        hasFile: Boolean(req.file),
+        originalname: req.file?.originalname,
+        mimetype: req.file?.mimetype,
+        size: req.file?.size,
+        bufferLength: req.file?.buffer?.length,
+      });
+
+      const audioFile = await toFile(
+        req.file.buffer,
+        req.file.originalname || "audio.webm",
+        {
+          type:
+            req.file.mimetype ||
+            "audio/webm",
+        }
+      );
+
       const transcription =
         await openai.audio.transcriptions.create({
-          file: req.file.buffer,
+          file: audioFile,
           model: "gpt-4o-mini-transcribe",
           language: "fr",
         });
