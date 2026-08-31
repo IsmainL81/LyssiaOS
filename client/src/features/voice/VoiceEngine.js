@@ -506,9 +506,10 @@ const NAME_CORRECTIONS = [
   { pattern: /\balyssia\b/gi, replacement: "Lyssia" },
   { pattern: /\balyssa\b/gi, replacement: "Lyssia" },
   { pattern: /\blycia\b/gi, replacement: "Lyssia" },
+  { pattern: /\blydia\b/gi, replacement: "Lyssia" },
 ];
 
-function correctKnownMishearings(text = "") {
+export function correctKnownMishearings(text = "") {
   let corrected = String(text);
 
   for (const { pattern, replacement } of NAME_CORRECTIONS) {

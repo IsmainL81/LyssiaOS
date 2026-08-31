@@ -47,6 +47,7 @@ import {
   stopListening,
   speak,
   stopSpeaking,
+  correctKnownMishearings,
 } from "../features/voice/VoiceEngine";
 
 import {
@@ -547,7 +548,9 @@ const Conversation = forwardRef(function Conversation(
 
           const finalText =
             whisperText && whisperText.trim()
-              ? whisperText.trim()
+              ? correctKnownMishearings(
+                  whisperText.trim()
+                )
               : text;
 
           await handleUtterance(finalText, null);
