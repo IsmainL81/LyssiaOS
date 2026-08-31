@@ -50,7 +50,7 @@ export class VoiceInputController {
       this.recorder =
         await startRecording();
 
-      this.recorder.start();
+      this.recorder.start(250);
       this.active = true;
 
       console.log(
