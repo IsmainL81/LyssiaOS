@@ -29,6 +29,10 @@ import { askLyssia } from "../features/ai/AIEngine";
 import {
   evaluateCognitiveInteraction,
 } from "../core/CognitiveRuntimeEngine";
+
+import {
+  getCognitiveBehaviorPolicy,
+} from "../core/CognitiveBehaviorPolicy";
 import { useLyssia } from "../core/LyssiaCore";
 import { useVision } from "../features/vision/VisionContext";
 import { performVisionRequest } from "../features/vision/visionRequest";
@@ -62,21 +66,21 @@ import {
 
 /**
  * =====================================================
- * PAGE CONVERSATION -- UNIFIÉE
+ * PAGE CONVERSATION -- UNIFI?E
  * =====================================================
- * Texte, voix et vision au même endroit, une seule liste
- * d'échanges. Plus de séparation entre "le chat" et "la
- * conversation" : un seul point d'entrée (handleUtterance)
- * traite un message quelle que soit sa modalité d'origine
- * (tapé ou parlé), route vers la vision si nécessaire, et
- * ne parle la réponse que si une session vocale est
- * active -- indépendamment de la façon dont le message est
- * arrivé.
+ * Texte, voix et vision au m?me endroit, une seule liste
+ * d'?changes. Plus de s?paration entre "le chat" et "la
+ * conversation" : un seul point d'entr?e (handleUtterance)
+ * traite un message quelle que soit sa modalit? d'origine
+ * (tap? ou parl?), route vers la vision si n?cessaire, et
+ * ne parle la r?ponse que si une session vocale est
+ * active -- ind?pendamment de la fa?on dont le message est
+ * arriv?.
  *
- * Utilisée à deux endroits : ancrée en bas du Dashboard
- * (compact, avatar au-dessus), et en plein écran sur la
- * route /conversation (compact=false). Même composant,
- * mêmes capacités, juste une mise en page adaptée.
+ * Utilis?e ? deux endroits : ancr?e en bas du Dashboard
+ * (compact, avatar au-dessus), et en plein ?cran sur la
+ * route /conversation (compact=false). M?me composant,
+ * m?mes capacit?s, juste une mise en page adapt?e.
  */
 
 const MAX_ATTACHMENT_BYTES =
@@ -91,8 +95,8 @@ const PHASE = {
 
 const PHASE_META = {
   idle: { label: "En pause", color: "#5a6b80" },
-  listening: { label: "À l'écoute", color: "#5ab6d8" },
-  thinking: { label: "Réflexion", color: "#e2a45f" },
+  listening: { label: "? l'?coute", color: "#5ab6d8" },
+  thinking: { label: "R?flexion", color: "#e2a45f" },
   speaking: { label: "Lyssia parle", color: "#5ab6d8" },
 };
 
@@ -106,7 +110,34 @@ const Conversation = forwardRef(function Conversation(
     buildWorkingContext,
     cognitiveHistory,
     updateCognitiveState,
+    cognitiveState,
+    registerCognitiveExperiment,
   } = useLyssia();
+
+  useEffect(() => {
+    cognitiveStateRef.current =
+      cognitiveState;
+
+    console.log(
+      "[Lyssia Cognitive] cognitiveState changed:",
+      cognitiveState
+    );
+  }, [cognitiveState]);
+  useEffect(() => {
+    cognitiveHistoryRef.current =
+      Array.isArray(cognitiveHistory)
+        ? cognitiveHistory
+        : [];
+
+    console.log(
+      "[Lyssia Cognitive] cognitiveHistory changed:",
+      {
+        length:
+          cognitiveHistoryRef.current.length,
+      }
+    );
+  }, [cognitiveHistory]);
+
   const { visionController } = useVision();
 
   const [phase, setPhase] = useState(PHASE.IDLE);
@@ -124,20 +155,22 @@ const Conversation = forwardRef(function Conversation(
   const sessionActiveRef = useRef(false);
   const phaseRef = useRef(PHASE.IDLE);
   const recognitionRef = useRef(null);
+  const cognitiveStateRef = useRef(null);
+  const cognitiveHistoryRef = useRef([]);
   const speechStartedAtRef = useRef(0);
   const sttControllerRef = useRef(null);
 
   /*
    * =====================================================
-   * SEGMENT AUDIO WHISPER (précision), en parallèle de la
-   * reconnaissance temps réel du navigateur (fluidité)
+   * SEGMENT AUDIO WHISPER (pr?cision), en parall?le de la
+   * reconnaissance temps r?el du navigateur (fluidit?)
    * =====================================================
-   * Un segment = l'audio brut entre deux résultats finaux
-   * de la reconnaissance continue. Démarré au même moment
-   * que chaque cycle d'écoute, arrêté et transcrit dès
-   * qu'un résultat final navigateur signale la fin d'une
+   * Un segment = l'audio brut entre deux r?sultats finaux
+   * de la reconnaissance continue. D?marr? au m?me moment
+   * que chaque cycle d'?coute, arr?t? et transcrit d?s
+   * qu'un r?sultat final navigateur signale la fin d'une
    * phrase -- le texte Whisper remplace alors le texte du
-   * navigateur, qui ne sert plus que de détecteur de fin
+   * navigateur, qui ne sert plus que de d?tecteur de fin
    * de phrase.
    */
 
@@ -147,7 +180,7 @@ const Conversation = forwardRef(function Conversation(
     const controller = new VoiceInputController({
       onError: (err) => {
         console.warn(
-          "Enregistrement Whisper — erreur :",
+          "Enregistrement Whisper ? erreur :",
           err
         );
       },
@@ -157,7 +190,7 @@ const Conversation = forwardRef(function Conversation(
 
     controller.start().catch((err) => {
       console.warn(
-        "Impossible de démarrer l'enregistrement Whisper :",
+        "Impossible de d?marrer l'enregistrement Whisper :",
         err
       );
     });
@@ -171,8 +204,8 @@ const Conversation = forwardRef(function Conversation(
     sttControllerRef.current = null;
 
     /*
-     * Démarre le segment suivant immédiatement, sans
-     * attendre la fin de la transcription -- l'écoute ne
+     * D?marre le segment suivant imm?diatement, sans
+     * attendre la fin de la transcription -- l'?coute ne
      * doit jamais s'interrompre en attendant Whisper.
      */
     startSTTSegment();
@@ -221,7 +254,7 @@ const Conversation = forwardRef(function Conversation(
 
   /*
    * =====================================================
-   * PIÈCE JOINTE
+   * PI?CE JOINTE
    * =====================================================
    */
 
@@ -236,7 +269,7 @@ const Conversation = forwardRef(function Conversation(
         ...previous,
         {
           sender: "lyssia",
-          text: "Ce fichier dépasse 20 Mo, je ne peux pas le joindre.",
+          text: "Ce fichier d?passe 20 Mo, je ne peux pas le joindre.",
         },
       ]);
       return;
@@ -283,11 +316,11 @@ const Conversation = forwardRef(function Conversation(
 
   /*
    * =====================================================
-   * TRAITEMENT UNIFIÉ D'UN ÉCHANGE
+   * TRAITEMENT UNIFI? D'UN ?CHANGE
    * =====================================================
-   * Point d'entrée unique, quelle que soit la modalité
-   * d'origine (texte tapé ou voix reconnue). Ne parle la
-   * réponse que si une session vocale est active.
+   * Point d'entr?e unique, quelle que soit la modalit?
+   * d'origine (texte tap? ou voix reconnue). Ne parle la
+   * r?ponse que si une session vocale est active.
    */
 
   const handleUtterance = useCallback(
@@ -331,7 +364,7 @@ const Conversation = forwardRef(function Conversation(
 
         if (isVisionRequest) {
           /*
-           * Mémorisée automatiquement dans
+           * M?moris?e automatiquement dans
            * captureAndAnalyze -> analyzeImageData.
            */
           reply = await performVisionRequest(
@@ -348,11 +381,11 @@ const Conversation = forwardRef(function Conversation(
           });
 
           /*
-           * workingMemory est TOUJOURS calculé, contrairement à
+           * workingMemory est TOUJOURS calcul?, contrairement ?
            * cognitiveContext.memories qui ne se remplit que si
            * needsMemory est vrai (donc quasiment jamais en
-           * conversation normale). Les faits sémantiques sont
-           * une connaissance de fond, pas une réponse à une
+           * conversation normale). Les faits s?mantiques sont
+           * une connaissance de fond, pas une r?ponse ? une
            * demande explicite de souvenir.
            */
 
@@ -361,10 +394,46 @@ const Conversation = forwardRef(function Conversation(
               query: userMessage,
             });
 
+          console.log(
+            "[Lyssia Cognitive] State available before policy:",
+            cognitiveState
+          );
+
+          const currentCognitiveState =
+            cognitiveStateRef.current;
+
+          console.log(
+            "[Lyssia Cognitive] State used for policy:",
+            currentCognitiveState
+          );
+
+          const behaviorPolicy =
+            getCognitiveBehaviorPolicy(
+              currentCognitiveState
+            );
+
+          cognitiveContext.behaviorPolicy =
+            behaviorPolicy;
+
           reply = await askLyssia(
             userMessage,
             cognitiveContext,
             attachmentToSend
+          );
+
+          console.log(
+            "[Lyssia Cognitive] History before runtime:",
+            {
+              length:
+                Array.isArray(cognitiveHistory)
+                  ? cognitiveHistory.length
+                  : null,
+
+              lastEntries:
+                Array.isArray(cognitiveHistory)
+                  ? cognitiveHistory.slice(-3)
+                  : cognitiveHistory,
+            }
           );
 
           const cognitiveRuntime =
@@ -383,22 +452,56 @@ const Conversation = forwardRef(function Conversation(
                 audio: true,
                 actions: false,
               },
+              behaviorPolicy,
+              cognitiveState:
+                cognitiveStateRef.current,
               history:
-                cognitiveHistory,
+                cognitiveHistoryRef.current,
             });
 
+          const nextCognitiveHistory =
+            Array.isArray(
+              cognitiveRuntime?.history
+            )
+              ? cognitiveRuntime.history
+              : [];
+
+          cognitiveHistoryRef.current =
+            nextCognitiveHistory;
+
+          const experimentProposal =
+            cognitiveRuntime?.adaptation
+              ?.experimentProposal;
+
+          if (
+            experimentProposal?.available === true &&
+            experimentProposal?.experiment
+          ) {
+            registerCognitiveExperiment({
+              ...experimentProposal.experiment,
+              mode: experimentProposal.mode,
+              proposalConfidence:
+                experimentProposal.confidence,
+              proposalType:
+                experimentProposal.type,
+              proposalSource:
+                experimentProposal.source,
+            });
+          }
           updateCognitiveState({
             state:
               cognitiveRuntime.state,
             history:
               cognitiveRuntime.history,
+            operationalIndex:
+              cognitiveRuntime.operationalIndex,
           });
 
 
         }
 
         if (!reply || !reply.trim()) {
-          throw new Error("Réponse vide de Lyssia.");
+          throw new Error("R?ponse vide de Lyssia.");
         }
 
         setMessages((previous) => [
@@ -438,7 +541,7 @@ const Conversation = forwardRef(function Conversation(
           ...previous,
           {
             sender: "lyssia",
-            text: "Je rencontre un problème pour répondre.",
+            text: "Je rencontre un probl?me pour r?pondre.",
           },
         ]);
 
@@ -458,12 +561,12 @@ const Conversation = forwardRef(function Conversation(
 
   /*
    * =====================================================
-   * API IMPÉRATIVE (utilisée par Dashboard)
+   * API IMP?RATIVE (utilis?e par Dashboard)
    * =====================================================
-   * Permet à un bouton externe (ex. "Analyse cette image")
-   * d'injecter un message dans le MÊME pipeline que le
-   * texte tapé ou la voix reconnue -- une seule histoire,
-   * une seule mémoire, quel que soit le déclencheur.
+   * Permet ? un bouton externe (ex. "Analyse cette image")
+   * d'injecter un message dans le M?ME pipeline que le
+   * texte tap? ou la voix reconnue -- une seule histoire,
+   * une seule m?moire, quel que soit le d?clencheur.
    */
 
   useImperativeHandle(
@@ -499,13 +602,13 @@ const Conversation = forwardRef(function Conversation(
 
   /*
    * =====================================================
-   * BOUCLE D'ÉCOUTE VOCALE
+   * BOUCLE D'?COUTE VOCALE
    * =====================================================
-   * Démarrage explicite, puis tours automatiques tant que
+   * D?marrage explicite, puis tours automatiques tant que
    * la session est active. Reconnaissance continue, y
    * compris pendant que Lyssia parle (barge-in via
-   * onSpeechActivity). Un seul redémarrage propre par
-   * coupure naturelle -- jamais de relances empilées.
+   * onSpeechActivity). Un seul red?marrage propre par
+   * coupure naturelle -- jamais de relances empil?es.
    */
 
   const runListeningCycle = useCallback(() => {
@@ -531,23 +634,23 @@ const Conversation = forwardRef(function Conversation(
         onSpeechActivity: (transcript) => {
           /*
            * Deux protections contre les fausses interruptions
-           * (Lyssia qui s'entend elle-même via les
-           * haut-parleurs, plus probable juste au moment où
-           * elle commence à parler) :
+           * (Lyssia qui s'entend elle-m?me via les
+           * haut-parleurs, plus probable juste au moment o?
+           * elle commence ? parler) :
            *
-           * - Délai de grâce de 700ms depuis le vrai début de
+           * - D?lai de gr?ce de 700ms depuis le vrai d?but de
            *   parole (onstart du moteur, pas l'appel de la
-           *   fonction) : le risque d'auto-écho est maximal
-           *   dans l'instant qui suit le déclenchement.
-           * - Seuil de longueur relevé (4 -> 7) : un fragment
-           *   très court reste plus probablement du bruit
-           *   qu'une intention réelle. N'importe quel mot
-           *   d'interruption ("attends", "silence", "stop là")
+           *   fonction) : le risque d'auto-?cho est maximal
+           *   dans l'instant qui suit le d?clenchement.
+           * - Seuil de longueur relev? (4 -> 7) : un fragment
+           *   tr?s court reste plus probablement du bruit
+           *   qu'une intention r?elle. N'importe quel mot
+           *   d'interruption ("attends", "silence", "stop l?")
            *   franchit largement ce seuil.
            *
-           * Log volontairement conservé : si la coupure se
-           * reproduit malgré ça, le texte capté ici dira si
-           * c'est un auto-écho (proche de ce qu'elle disait)
+           * Log volontairement conserv? : si la coupure se
+           * reproduit malgr? ?a, le texte capt? ici dira si
+           * c'est un auto-?cho (proche de ce qu'elle disait)
            * ou autre chose.
            */
           const elapsedSinceStart =
@@ -561,9 +664,9 @@ const Conversation = forwardRef(function Conversation(
             elapsedSinceStart > 700
           ) {
             console.warn(
-              "Barge-in déclenché -- texte capté :",
+              "Barge-in d?clench? -- texte capt? :",
               transcript,
-              `(${elapsedSinceStart}ms après le début de la phrase)`
+              `(${elapsedSinceStart}ms apr?s le d?but de la phrase)`
             );
 
             stopSpeaking();
@@ -579,11 +682,11 @@ const Conversation = forwardRef(function Conversation(
           if (phaseRef.current === PHASE.THINKING) return;
 
           /*
-           * Le texte du navigateur ne sert qu'à détecter
-           * la fin de la phrase. Le texte réellement
-           * envoyé vient de Whisper (segment audio en
-           * parallèle) -- avec repli sur le texte
-           * navigateur si Whisper échoue ou revient vide,
+           * Le texte du navigateur ne sert qu'? d?tecter
+           * la fin de la phrase. Le texte r?ellement
+           * envoy? vient de Whisper (segment audio en
+           * parall?le) -- avec repli sur le texte
+           * navigateur si Whisper ?choue ou revient vide,
            * pour ne jamais perdre la phrase.
            */
 
@@ -672,22 +775,22 @@ const Conversation = forwardRef(function Conversation(
 
   /*
    * =====================================================
-   * DÉMARRAGE AUTOMATIQUE SI PERMISSION DÉJÀ ACCORDÉE
+   * D?MARRAGE AUTOMATIQUE SI PERMISSION D?J? ACCORD?E
    * =====================================================
    * Un navigateur exige un geste utilisateur pour LA
-   * TOUTE PREMIÈRE autorisation micro -- incontournable,
+   * TOUTE PREMI?RE autorisation micro -- incontournable,
    * ce n'est pas un choix de Lyssia OS. Mais une fois
-   * cette autorisation accordée pour cette origine, la
-   * réactiver n'en a plus besoin. On vérifie l'état réel
-   * via la Permissions API (lecture seule, ne déclenche
-   * jamais de prompt) et on ne démarre que si elle est
-   * déjà "granted".
+   * cette autorisation accord?e pour cette origine, la
+   * r?activer n'en a plus besoin. On v?rifie l'?tat r?el
+   * via la Permissions API (lecture seule, ne d?clenche
+   * jamais de prompt) et on ne d?marre que si elle est
+   * d?j? "granted".
    *
-   * Différent de la tentative du matin : ici la relance
-   * est unique, conditionnée à la permission, et repose
-   * sur runListeningCycle -- déjà à l'épreuve du
-   * redémarrage propre (un seul relais par coupure
-   * naturelle, jamais de relances empilées).
+   * Diff?rent de la tentative du matin : ici la relance
+   * est unique, conditionn?e ? la permission, et repose
+   * sur runListeningCycle -- d?j? ? l'?preuve du
+   * red?marrage propre (un seul relais par coupure
+   * naturelle, jamais de relances empil?es).
    */
 
   useEffect(() => {
@@ -718,7 +821,7 @@ const Conversation = forwardRef(function Conversation(
         /*
          * Permissions API indisponible pour 'microphone'
          * (Firefox notamment) -- on ne prend aucun risque,
-         * le bouton micro reste le point de départ manuel.
+         * le bouton micro reste le point de d?part manuel.
          */
       }
     }
@@ -834,7 +937,7 @@ const Conversation = forwardRef(function Conversation(
                   textAlign: "center",
                 }}
               >
-                « {liveText} »
+                ? {liveText} ?
               </Typography>
             )}
 
@@ -897,7 +1000,7 @@ const Conversation = forwardRef(function Conversation(
                     <Box
                       component="img"
                       src={message.attachment.data}
-                      alt={message.attachment.filename || "Pièce jointe"}
+                      alt={message.attachment.filename || "Pi?ce jointe"}
                       sx={{
                         maxWidth: "100%",
                         maxHeight: 220,
@@ -928,7 +1031,7 @@ const Conversation = forwardRef(function Conversation(
       )}
 
       {/* =================================================
-          PIÈCE JOINTE EN ATTENTE
+          PI?CE JOINTE EN ATTENTE
          ================================================= */}
 
       {attachment && (
@@ -976,7 +1079,7 @@ const Conversation = forwardRef(function Conversation(
           style={{ display: "none" }}
         />
 
-        <Tooltip title={voiceActive ? "Arrêter l'écoute" : "Parler à Lyssia"}>
+        <Tooltip title={voiceActive ? "Arr?ter l'?coute" : "Parler ? Lyssia"}>
           <IconButton
             onClick={toggleVoiceSession}
             disabled={!supported}
@@ -998,7 +1101,7 @@ const Conversation = forwardRef(function Conversation(
           fullWidth
           size={compact ? "small" : "medium"}
           value={input}
-          placeholder="Écris ou parle à Lyssia..."
+          placeholder="?cris ou parle ? Lyssia..."
           onChange={(event) => setInput(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === "Enter" && !event.shiftKey) {

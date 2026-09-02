@@ -1,4 +1,5 @@
 import {
+  useEffect,
   useRef,
   useState,
 } from "react";
@@ -34,12 +35,24 @@ import {
 } from "../../core/CognitiveEngine";
 
 import {
+  deriveConversationContext,
+} from "../../core/ConversationContextEngine.js";
+
+import {
   orchestrateCognition,
 } from "../../core/CognitiveEngine.v2.js";
 
 import {
   executeCognitivePlan,
 } from "../../core/CognitiveExecutor.js";
+
+import {
+  evaluateCognitiveInteraction,
+} from "../../core/CognitiveRuntimeEngine.js";
+
+import {
+  getCognitiveBehaviorPolicy,
+} from "../../core/CognitiveBehaviorPolicy.js";
 
 import {
   performVisionRequest,
@@ -74,6 +87,13 @@ export default function ChatPanel({
   memories,
   searchMemories,
   rememberExchange,
+  buildWorkingContext,
+  conversationContext,
+  updateConversationContext,
+  cognitiveHistory,
+  cognitiveState,
+  updateCognitiveState,
+  registerCognitiveExperiment,
 } = useLyssia();
 
   const {
@@ -108,6 +128,38 @@ export default function ChatPanel({
 
   const fileInputRef =
     useRef(null);
+
+  /*
+   * =====================================================
+   * R?F?RENCES COGNITIVES
+   * =====================================================
+   * Les refs ?vitent d'utiliser un ?tat React potentiellement
+   * obsol?te pendant le traitement d'une interaction.
+   */
+
+  const cognitiveStateRef =
+    useRef(null);
+
+  const cognitiveHistoryRef =
+    useRef([]);
+
+  /*
+   * Synchronisation des r?f?rences cognitives.
+   * Les refs donnent toujours acc?s aux derni?res valeurs
+   * sans attendre un nouveau rendu React.
+   */
+
+  useEffect(() => {
+    cognitiveStateRef.current =
+      cognitiveState;
+  }, [cognitiveState]);
+
+  useEffect(() => {
+    cognitiveHistoryRef.current =
+      Array.isArray(cognitiveHistory)
+        ? cognitiveHistory
+        : [];
+  }, [cognitiveHistory]);
 
   /*
    * =====================================================
@@ -480,6 +532,126 @@ Si un souvenir concerne une perception visuelle passée, indique clairement qu'i
           plan?.message
         );
 
+      /*
+       * ---------------------------------------------------
+       * ?VALUATION COGNITIVE DE L'INTERACTION VISION
+       * ---------------------------------------------------
+       */
+
+      const visionMessage =
+        plan?.message ||
+        "Analyse de la sc?ne observ?e.";
+
+      const visionCognition =
+        analyzeMessage(
+          visionMessage,
+          memories
+        );
+
+      const workingMemory =
+        buildWorkingContext({
+          query:
+            visionMessage,
+        });
+
+      const behaviorPolicy =
+        getCognitiveBehaviorPolicy(
+          cognitiveStateRef.current
+        );
+
+      const cognitiveRuntime =
+        evaluateCognitiveInteraction({
+          message:
+            visionMessage,
+
+          reply:
+            response,
+
+          cognitivePlan:
+            plan,
+
+          cognition:
+            visionCognition,
+
+          workingMemory,
+
+          memories,
+
+          capabilities: {
+            chat: true,
+            vision: true,
+            memory: true,
+            audio: false,
+            actions: false,
+          },
+
+          behaviorPolicy,
+
+          cognitiveState:
+            cognitiveStateRef.current,
+
+          history:
+            cognitiveHistoryRef.current,
+        });
+
+      const nextCognitiveHistory =
+        Array.isArray(
+          cognitiveRuntime?.history
+        )
+          ? cognitiveRuntime.history
+          : [];
+
+      cognitiveHistoryRef.current =
+        nextCognitiveHistory;
+
+      if (
+        cognitiveRuntime?.state
+      ) {
+        cognitiveStateRef.current =
+          cognitiveRuntime.state;
+      }
+
+      const experimentProposal =
+        cognitiveRuntime?.adaptation
+          ?.experimentProposal;
+
+      if (
+        experimentProposal?.available === true &&
+        experimentProposal?.experiment
+      ) {
+        registerCognitiveExperiment({
+          ...experimentProposal.experiment,
+
+          mode:
+            experimentProposal.mode,
+
+          proposalConfidence:
+            experimentProposal.confidence,
+
+          proposalType:
+            experimentProposal.type,
+
+          proposalSource:
+            experimentProposal.source,
+        });
+      }
+
+      updateCognitiveState({
+        state:
+          cognitiveRuntime?.state,
+
+        history:
+          nextCognitiveHistory,
+
+        operationalIndex:
+          cognitiveRuntime?.operationalIndex,
+      });
+
+      console.log(
+        "[Lyssia Cognitive] Vision interaction evaluated:",
+        cognitiveRuntime
+      );
+
       setMessages(
         (previous) => [
           ...previous,
@@ -601,6 +773,36 @@ Si un souvenir concerne une perception visuelle passée, indique clairement qu'i
       cognition,
       memories,
     });
+
+    /*
+     * ---------------------------------------------------
+     * CONTEXTE CONVERSATIONNEL ACTIF
+     * ---------------------------------------------------
+     */
+
+    const nextConversationContext =
+      deriveConversationContext({
+        message: userMessage,
+        response: "",
+        cognition,
+        previousContext:
+          conversationContext,
+      });
+
+    updateConversationContext(
+      nextConversationContext
+    );
+
+    const workingMemory =
+      buildWorkingContext({
+        query: userMessage,
+      });
+
+    cognitiveContext.conversationContext =
+      nextConversationContext;
+
+    cognitiveContext.workingMemory =
+      workingMemory;
 
     console.log(
   "🧠 Lyssia — analyse cognitive :",
@@ -725,6 +927,109 @@ Si un souvenir concerne une perception visuelle passée, indique clairement qu'i
           "Réponse vide de Lyssia."
         );
       }
+
+      /*
+       * ---------------------------------------------------
+       * ?VALUATION COGNITIVE DE L'INTERACTION
+       * ---------------------------------------------------
+       */
+
+
+      const behaviorPolicy =
+        getCognitiveBehaviorPolicy(
+          cognitiveStateRef.current
+        );
+
+      const cognitiveRuntime =
+        evaluateCognitiveInteraction({
+          message:
+            userMessage,
+
+          reply:
+            response,
+
+          cognitivePlan,
+
+          cognition,
+
+          workingMemory,
+
+          memories,
+
+          capabilities: {
+            chat: true,
+            vision: true,
+            memory: true,
+            audio: false,
+            actions: false,
+          },
+
+          behaviorPolicy,
+
+          cognitiveState:
+            cognitiveStateRef.current,
+
+          history:
+            cognitiveHistoryRef.current,
+        });
+
+      const nextCognitiveHistory =
+        Array.isArray(
+          cognitiveRuntime?.history
+        )
+          ? cognitiveRuntime.history
+          : [];
+
+      cognitiveHistoryRef.current =
+        nextCognitiveHistory;
+
+      if (
+        cognitiveRuntime?.state
+      ) {
+        cognitiveStateRef.current =
+          cognitiveRuntime.state;
+      }
+
+      const experimentProposal =
+        cognitiveRuntime?.adaptation
+          ?.experimentProposal;
+
+      if (
+        experimentProposal?.available === true &&
+        experimentProposal?.experiment
+      ) {
+        registerCognitiveExperiment({
+          ...experimentProposal.experiment,
+
+          mode:
+            experimentProposal.mode,
+
+          proposalConfidence:
+            experimentProposal.confidence,
+
+          proposalType:
+            experimentProposal.type,
+
+          proposalSource:
+            experimentProposal.source,
+        });
+      }
+
+      updateCognitiveState({
+        state:
+          cognitiveRuntime?.state,
+
+        history:
+          nextCognitiveHistory,
+
+        operationalIndex:
+          cognitiveRuntime?.operationalIndex,
+      });
+
+      console.log(
+        "[Lyssia Cognitive] Chat interaction evaluated:",
+        cognitiveRuntime
+      );
 
       setMessages(
         (previous) => [
@@ -1123,3 +1428,13 @@ Si un souvenir concerne une perception visuelle passée, indique clairement qu'i
     </Paper>
   );
 }
+
+
+
+
+
+
+
+
+
+

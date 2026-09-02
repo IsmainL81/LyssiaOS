@@ -13,6 +13,12 @@ import {
 } from "./ConversationState";
 
 import {
+  createInitialConversationContext,
+  updateConversationContext as applyConversationContextUpdate,
+  resetConversationContext,
+} from "./ConversationContextEngine.js";
+
+import {
   createContext,
   useContext,
   useEffect,
@@ -23,13 +29,76 @@ import {
 import { createInitialStatus } from "./StatusEngine";
 
 import { askMemoryExtraction } from "../features/ai/AIEngine";
+import {
+  createExperimentRegistry,
+  registerExperiment,
+  findActiveSimilarExperiment,
+  registerExperimentObservation,
+  updateExperiment,
+} from "./CognitiveExperimentRegistry.js";
 
 const LyssiaContext =
   createContext(null);
 
 const MEMORY_STORAGE_KEY =
   "lyssia_os_memory";
+const EXPERIMENT_STORAGE_KEY =
+  "lyssia_os_experiments";
+const COGNITIVE_HISTORY_STORAGE_KEY =
+  "lyssia_os_cognitive_history";
 
+function loadExperiments() {
+  try {
+    const stored =
+      localStorage.getItem(
+        EXPERIMENT_STORAGE_KEY
+      );
+
+    if (!stored) {
+      return [];
+    }
+
+    const parsed =
+      JSON.parse(stored);
+
+    return createExperimentRegistry(
+      parsed
+    );
+  } catch (error) {
+    console.error(
+      "Erreur chargement expériences Lyssia :",
+      error
+    );
+
+    return [];
+  }
+}
+function loadCognitiveHistory() {
+  try {
+    const stored =
+      localStorage.getItem(
+        COGNITIVE_HISTORY_STORAGE_KEY
+      );
+
+    if (!stored) {
+      return [];
+    }
+
+    const parsed =
+      JSON.parse(stored);
+
+    return Array.isArray(parsed)
+      ? parsed
+      : [];
+  } catch (error) {
+    console.error(
+      "Erreur chargement historique cognitif Lyssia :",
+      error
+    );
+
+    return [];
+  }
+}
 function loadMemories() {
   try {
     const stored =
@@ -93,6 +162,37 @@ useEffect(() => {
 
   /*
    * =====================================================
+   * CONTEXTE CONVERSATIONNEL ACTIF
+   * =====================================================
+   */
+
+  const [
+    conversationContext,
+    setConversationContextState,
+  ] = useState(
+    createInitialConversationContext
+  );
+
+  function updateActiveConversationContext(
+    patch = {}
+  ) {
+    setConversationContextState(
+      (previousContext) =>
+        applyConversationContextUpdate(
+          previousContext,
+          patch
+        )
+    );
+  }
+
+  function resetActiveConversationContext() {
+    setConversationContextState(
+      resetConversationContext()
+    );
+  }
+
+  /*
+   * =====================================================
    * MESSAGE SYSTÈME
    * =====================================================
    */
@@ -136,11 +236,25 @@ useEffect(() => {
   const [
     cognitiveHistory,
     setCognitiveHistory,
-  ] = useState([]);
+  ] = useState(
+    loadCognitiveHistory
+  );
+
+  const [
+    operationalIndex,
+    setOperationalIndex,
+  ] = useState(null);
+  const [
+    experimentRegistry,
+    setExperimentRegistry,
+  ] = useState(
+    loadExperiments
+  );
 
   function updateCognitiveState({
     state = null,
     history = null,
+    operationalIndex = null,
   } = {}) {
     if (state) {
       setCognitiveState(state);
@@ -149,8 +263,65 @@ useEffect(() => {
     if (Array.isArray(history)) {
       setCognitiveHistory(history);
     }
+
+    if (operationalIndex) {
+      setOperationalIndex(
+        operationalIndex
+      );
+    }
   }
 
+  function registerCognitiveExperiment(
+    experiment
+  ) {
+    setExperimentRegistry((current) => {
+      const existing =
+        findActiveSimilarExperiment(
+          current,
+          {
+            target: experiment?.target,
+            mode: experiment?.mode,
+          }
+        );
+
+      if (existing) {
+        return current;
+      }
+
+      return registerExperiment(
+        current,
+        experiment
+      );
+    });
+  }
+
+  function registerCognitiveExperimentObservation(
+    experimentId,
+    observation = {}
+  ) {
+    setExperimentRegistry(
+      (current) =>
+        registerExperimentObservation(
+          current,
+          experimentId,
+          observation
+        )
+    );
+  }
+
+  function updateCognitiveExperiment(
+    experimentId,
+    patch = {}
+  ) {
+    setExperimentRegistry(
+      (current) =>
+        updateExperiment(
+          current,
+          experimentId,
+          patch
+        )
+    );
+  }
   /*
    * =====================================================
    * SAUVEGARDE AUTOMATIQUE
@@ -170,6 +341,36 @@ useEffect(() => {
       );
     }
   }, [memories]);
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        COGNITIVE_HISTORY_STORAGE_KEY,
+        JSON.stringify(
+          cognitiveHistory
+        )
+      );
+    } catch (error) {
+      console.error(
+        "Erreur sauvegarde historique cognitif Lyssia :",
+        error
+      );
+    }
+  }, [cognitiveHistory]);
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        EXPERIMENT_STORAGE_KEY,
+        JSON.stringify(
+          experimentRegistry
+        )
+      );
+    } catch (error) {
+      console.error(
+        "Erreur sauvegarde expériences Lyssia :",
+        error
+      );
+    }
+  }, [experimentRegistry]);
 
   /*
    * =====================================================
@@ -653,6 +854,14 @@ useEffect(() => {
       updateConversationState:
       setConversationState,
 
+      conversationContext,
+
+      updateConversationContext:
+      updateActiveConversationContext,
+
+      resetConversationContext:
+      resetActiveConversationContext,
+
       statusMessage,
       setStatusMessage,
 
@@ -696,16 +905,32 @@ useEffect(() => {
 
       cognitiveHistory,
 
+      operationalIndex,
+
       updateCognitiveState,
+
+      /*
+       * Registre expérimental
+       */
+      experimentRegistry,
+
+      registerCognitiveExperiment,
+
+      registerCognitiveExperimentObservation,
+
+      updateCognitiveExperiment,
     }),
     [
       systemState,
       conversationState,
+      conversationContext,
       statusMessage,
       memories,
       visionEvents,
       cognitiveState,
       cognitiveHistory,
+      operationalIndex,
+      experimentRegistry,
     ]
   );
 

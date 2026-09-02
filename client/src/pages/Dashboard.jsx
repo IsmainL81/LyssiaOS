@@ -1,4 +1,4 @@
-﻿import {
+import {
   Box,
   Typography,
   IconButton,
@@ -25,6 +25,7 @@ import LivingPortraitV2 from "../features/avatar/LivingPortraitV2";
 import Conversation from "./Conversation";
 import CameraView from "../components/CameraView";
 import MemoryPanel from "../components/MemoryPanel";
+import CognitiveStatePanel from "../components/CognitiveStatePanel";
 import ContextPanel from "../components/ContextPanel";
 import { useLyssia } from "../core/LyssiaCore";
 import InteractionsPanel from "../components/InteractionsPanel";
@@ -39,6 +40,9 @@ export default function Dashboard() {
   const {
     systemState,
     memories,
+    cognitiveState,
+    cognitiveHistory,
+    operationalIndex,
   } = useLyssia();
 
   const [
@@ -192,8 +196,8 @@ const latestMemory =
             <Tooltip
               title={
                 viewMode === "detail"
-                  ? "Vue Présence"
-                  : "Vue Détail"
+                  ? "Vue Pr?sence"
+                  : "Vue D?tail"
               }
             >
               <IconButton
@@ -227,7 +231,7 @@ const latestMemory =
 
 
         {/* ===================================================
-            HALO / ATMOSPHÈRE
+            HALO / ATMOSPH?RE
         =================================================== */}
 
         <Box
@@ -315,7 +319,7 @@ const latestMemory =
 
 
         {/* ===================================================
-            PRÉSENCE LYSSIA
+            PR?SENCE LYSSIA
         =================================================== */}
 
         <Box
@@ -356,7 +360,7 @@ const latestMemory =
                 "0 4px 25px rgba(0,0,0,0.85)",
             }}
           >
-            Bonjour Ismain 👋
+            Bonjour Ismain ??
           </Typography>
 
           <Typography
@@ -408,7 +412,7 @@ const latestMemory =
             text="Analyse cette image"
             onClick={() =>
               conversationRef.current?.submitUtterance(
-                "Regarde et décris ce que tu vois."
+                "Regarde et d?cris ce que tu vois."
               )
             }
           />
@@ -420,7 +424,7 @@ const latestMemory =
 
           <QuickAction
             icon={<FormatListBulleted />}
-            text="Mes tâches"
+            text="Mes t?ches"
           />
 
           <QuickAction
@@ -452,7 +456,7 @@ const latestMemory =
 
 
         {/* ===================================================
-            CHATPANEL RÉEL
+            CHATPANEL R?EL
         =================================================== */}
 
         <Box
@@ -513,11 +517,11 @@ const latestMemory =
         }}
       >
         {/* ===================================================
-            MÉMOIRE
+            M?MOIRE
         =================================================== */}
 
         <Panel
-          title="MÉMOIRE ACTIVE"
+          title="M?MOIRE ACTIVE"
           link="Voir tout"
       >
         <MemoryPanel
@@ -538,11 +542,28 @@ const latestMemory =
         </Panel>
 
         {/* ===================================================
+            ?TAT COGNITIF
+        =================================================== */}
+
+        <Panel
+          title="?TAT COGNITIF"
+          sx={{
+            mt: 2,
+          }}
+        >
+          <CognitiveStatePanel
+            cognitiveState={cognitiveState}
+            cognitiveHistory={cognitiveHistory}
+            operationalIndex={operationalIndex}
+          />
+        </Panel>
+
+        {/* ===================================================
             CONTEXTE
         =================================================== */}
 
           <Panel
-            title="ÉTAT DU SYSTÈME"
+            title="?TAT DU SYST?ME"
             sx={{
             mt: 2,
             }}
@@ -558,7 +579,7 @@ const latestMemory =
         =================================================== */}
 
         <Panel
-          title="DERNIÈRES INTERACTIONS"
+          title="DERNI?RES INTERACTIONS"
           link="Voir tout"
           sx={{
           mt: 2,

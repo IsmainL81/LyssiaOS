@@ -27,12 +27,100 @@ function round(value) {
 function normalizeEntry(entry = {}) {
   return {
     score: round(entry.score),
+
     timestamp:
       entry.timestamp ||
       new Date().toISOString(),
+
     source:
       entry.source ||
       "interaction",
+
+    operationalIndex:
+      Number.isFinite(
+        Number(entry.operationalIndex)
+      )
+        ? Math.round(
+            Number(entry.operationalIndex)
+          )
+        : null,
+
+    operationalComponents:
+      entry.operationalComponents
+        ? {
+            cognitive:
+              Number.isFinite(
+                Number(
+                  entry.operationalComponents.cognitive
+                )
+              )
+                ? Math.round(
+                    Number(
+                      entry.operationalComponents.cognitive
+                    )
+                  )
+                : null,
+
+            integration:
+              Number.isFinite(
+                Number(
+                  entry.operationalComponents.integration
+                )
+              )
+                ? Math.round(
+                    Number(
+                      entry.operationalComponents.integration
+                    )
+                  )
+                : null,
+
+            capabilities:
+              Number.isFinite(
+                Number(
+                  entry.operationalComponents.capabilities
+                )
+              )
+                ? Math.round(
+                    Number(
+                      entry.operationalComponents.capabilities
+                    )
+                  )
+                : null,
+
+            adaptation:
+              Number.isFinite(
+                Number(
+                  entry.operationalComponents.adaptation
+                )
+              )
+                ? Math.round(
+                    Number(
+                      entry.operationalComponents.adaptation
+                    )
+                  )
+                : null,
+
+            reliability:
+              Number.isFinite(
+                Number(
+                  entry.operationalComponents.reliability
+                )
+              )
+                ? Math.round(
+                    Number(
+                      entry.operationalComponents.reliability
+                    )
+                  )
+                : null,
+          }
+        : null,
+
+    operationalEvidence:
+      Array.isArray(
+        entry.operationalEvidence
+      )
+        ? entry.operationalEvidence.slice(0, 20)
+        : [],
   };
 }
 

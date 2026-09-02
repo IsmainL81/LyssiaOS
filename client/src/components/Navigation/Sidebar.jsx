@@ -28,7 +28,7 @@ const items = [
   },
   {
     icon: <Memory />,
-    label: "Mémoire",
+    label: "M?moire",
     path: "/memory",
   },
   {
@@ -38,7 +38,7 @@ const items = [
   },
   {
     icon: <TaskAlt />,
-    label: "Tâches",
+    label: "T?ches",
     path: "/tasks",
   },
   {
@@ -48,7 +48,7 @@ const items = [
   },
   {
     icon: <Settings />,
-    label: "Paramètres",
+    label: "Param?tres",
     path: "/settings",
   },
 ];
@@ -119,7 +119,7 @@ export default function Sidebar() {
             fontSize: 20,
           }}
         >
-          ✦
+          ?
         </Box>
 
         <Typography
@@ -217,7 +217,7 @@ export default function Sidebar() {
       </Box>
 
       {/* =====================================================
-          SÉPARATEUR
+          S?PARATEUR
       ===================================================== */}
 
       <Box
@@ -232,7 +232,7 @@ export default function Sidebar() {
       />
 
       {/* =====================================================
-          STATUT SYSTÈME
+          STATUT SYST?ME
       ===================================================== */}
 
       <Typography
@@ -248,7 +248,7 @@ export default function Sidebar() {
           color: "#64748b",
         }}
       >
-        STATUT SYSTÈME
+        STATUT SYST?ME
       </Typography>
 
       <SystemStatus
@@ -258,7 +258,7 @@ export default function Sidebar() {
       />
 
       <SystemStatus
-        label="Mémoire"
+        label="M?moire"
         value="Active"
         color="#22c55e"
       />
@@ -270,7 +270,7 @@ export default function Sidebar() {
       />
 
       <SystemStatus
-        label="Connectivité"
+        label="Connectivit?"
         value="En ligne"
         color="#22c55e"
       />
@@ -335,7 +335,7 @@ export default function Sidebar() {
               whiteSpace: "nowrap",
             }}
           >
-            Ismain LHERBÉ
+            Ismain LHERB?
           </Typography>
 
           <Typography
@@ -356,7 +356,7 @@ export default function Sidebar() {
             fontSize: 16,
           }}
         >
-         ⌄
+         ?
         </Box>
       </Box>
     </Box>

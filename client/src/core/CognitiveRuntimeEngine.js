@@ -19,6 +19,19 @@ import {
   createCognitiveState,
 } from "./CognitiveStateEngine.js";
 
+import {
+  evaluateCognitiveOperationalIndex,
+} from "./CognitiveOperationalIndexEngine.js";
+
+import {
+  deriveOperationalSignals,
+} from "./CognitiveOperationalSignalsEngine.js";
+
+import {
+  evaluateCognitiveAdaptation,
+  suggestCognitiveExperiment,
+} from "./CognitiveAdaptationEngine.js";
+
 /**
  * ============================================================
  * LYSSIA OS
@@ -57,6 +70,8 @@ export function evaluateCognitiveInteraction({
   workingMemory = null,
   memories = [],
   capabilities = {},
+  behaviorPolicy = null,
+  cognitiveState = null,
   history = [],
 } = {}) {
   /*
@@ -105,7 +120,49 @@ export function evaluateCognitiveInteraction({
 
   /*
    * ------------------------------------------------------------
-   * 4. HISTORIQUE
+   * 4. INDICE OPÉRATIONNEL
+   * ------------------------------------------------------------
+   *
+   * Intégration initiale volontairement neutre :
+   * le score cognitif constitue la base de l'indice.
+   * Les bonus seront alimentés ultérieurement par
+   * des signaux réels provenant de l'architecture.
+   */
+
+  const operationalSignals =
+    deriveOperationalSignals({
+      cognitiveResult,
+      performanceResult,
+      cognitivePlan,
+      cognition,
+      workingMemory,
+      memories,
+      capabilities,
+      behaviorPolicy,
+      cognitiveState,
+    });
+
+  const operationalIndexResult =
+    evaluateCognitiveOperationalIndex({
+      cognitiveScore:
+        compositeResult.compositeScore,
+
+      integration:
+        operationalSignals.integration.score,
+
+      capabilities:
+        operationalSignals.capabilities.score,
+
+      adaptation:
+        operationalSignals.adaptation.score,
+
+      reliability:
+        operationalSignals.reliability.score,
+    });
+
+  /*
+   * ------------------------------------------------------------
+   * 5. HISTORIQUE
    * ------------------------------------------------------------
    *
    * L'historique reçu en entrée reste immuable.
@@ -121,6 +178,15 @@ export function evaluateCognitiveInteraction({
 
         source:
           "interaction",
+
+        operationalIndex:
+          operationalIndexResult.operationalIndex,
+
+        operationalComponents:
+          operationalIndexResult.components,
+
+        operationalEvidence:
+          operationalSignals.evidence,
       }
     );
 
@@ -145,10 +211,41 @@ export function evaluateCognitiveInteraction({
       capabilities,
     });
 
+  const adaptationResult =
+    evaluateCognitiveAdaptation({
+      history: nextHistory,
+      cognitiveState: state,
+    });
+
+  const experimentProposal =
+    suggestCognitiveExperiment({
+      history: nextHistory,
+      cognitiveState: state,
+    });
+
+  console.log(
+    "[Lyssia Adaptation] observation:",
+    adaptationResult
+  );
+
+  console.log(
+    "[Lyssia Adaptation] experiment proposal:",
+    experimentProposal
+  );
+
   return {
     cognitiveResult,
     performanceResult,
     compositeResult,
+
+    operationalIndex:
+      operationalIndexResult,
+
+    adaptation: {
+      ...adaptationResult,
+
+      experimentProposal,
+    },
 
     history:
       nextHistory,
